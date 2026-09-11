@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    /* Stop iOS inflating text in landscape — the list is a fixed-width
+       column and the bump breaks the row rhythm. */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+    @apply dark:bg-gray-950 dark:text-gray-50;
+    /* No bounce: the list has its own scroll container and the rubber-band
+       reveals the page background behind a sheet. */
+    overscroll-behavior-y: none;
+  }
+
+  /* 16px is the threshold below which iOS Safari zooms on focus. Every input
+     in the app is at least this size for that reason alone. */
+  input, textarea, select {
+    font-size: 16px;
+  }
+
+  /* The app is a tool, not a document — text selection on labels and rows
+     only ever fires by accident during a long-press. Inputs opt back in. */
+  body {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  input, textarea, [contenteditable] {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+@layer utilities {
+  /* Used by the list container so a long list scrolls under the composer
+     rather than the whole page moving. */
+  .scroll-area {
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+}

@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingBasket } from 'lucide-react';
+import Logo from './Logo';
 
 /**
  * The frame between "the app booted" and "we know who you are".
@@ -11,10 +11,7 @@ import { ShoppingBasket } from 'lucide-react';
 export default function Splash() {
   return (
     <div className="app-bg flex min-h-screen items-center justify-center">
-      <ShoppingBasket
-        className="h-10 w-10 text-brand-600 dark:text-brand-400 animate-pulse"
-        aria-label="טוען"
-      />
+      <Logo size={56} className="animate-pulse" />
     </div>
   );
 }

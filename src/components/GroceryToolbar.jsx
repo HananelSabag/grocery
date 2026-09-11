@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDown, History, User, Users } from 'lucide-react';
 import { cn } from '../lib/helpers';
+import Logo from './Logo';
 
 /**
  * The page's entire chrome: one row and a hairline.
@@ -44,13 +45,7 @@ export default function GroceryToolbar({
         {/* The mark, at the size it was drawn for. Standalone there is no app
             shell above this row, so without it nothing on screen says which
             app you are in. */}
-        <img
-          src="/favicon.svg"
-          alt=""
-          width="36"
-          height="36"
-          className="h-9 w-9 shrink-0 rounded-xl"
-        />
+        <Logo size={36} />
 
         <div className="min-w-0 flex-1">
           {/* The list's name is only worth a line when there is more than one. */}

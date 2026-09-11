@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { ShoppingBasket, Check } from 'lucide-react';
+import { Check } from 'lucide-react';
 
 import { signInWithGoogle } from '../lib/supabase';
 import { useLanguage } from '../i18n';
 import { cn } from '../lib/helpers';
+import Logo from '../components/Logo';
 
 /** Google's mark, inline — the CSP allows no external images. */
 const GoogleMark = () => (
@@ -58,10 +59,10 @@ export default function SignIn() {
           transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
           className="w-full max-w-sm text-center"
         >
-          <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-2xl
-                          bg-brand-600 shadow-lg shadow-brand-600/25">
-            <ShoppingBasket className="h-8 w-8 text-white" />
-          </div>
+          {/* The real mark, not a stand-in glyph — this is the first thing
+              anyone sees of the app, and it is the same image that will sit
+              on their home screen afterwards. */}
+          <Logo size={88} className="mx-auto mb-6 drop-shadow-xl" />
 
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">
             {t('auth.signInTitle')}

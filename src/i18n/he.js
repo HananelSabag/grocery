@@ -64,6 +64,12 @@ export default {
     GROCERY_SCRAPE_UNSUPPORTED: 'לא ניתן לקרוא את הדף — מלאו ידנית',
   },
 
+  /** The profile's own stat tile — a count of what you personally ticked off. */
+  history: {
+    ...grocery.history,
+    statItems: 'פריטים שלקחת',
+  },
+
   common: {
     loading: 'טוען…',
     retry: 'נסה שוב',

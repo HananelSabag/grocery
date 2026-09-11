@@ -147,14 +147,14 @@ export function useGrocerySharing() {
     mutationFn: async ({ token, action }) => {
       if (action === 'accept') {
         const { data, error } = await supabase.rpc('accept_invitation', { p_token: token });
-        if (error) throw { error: { code: 'GROCERY_INVITE_INVALID' } };
+        if (error) throw { error: { code: 'GROCERY_INVITE_NOT_FOUND' } };
         return { listId: data };
       }
       const { error } = await supabase
         .from('invitations')
         .update({ status: 'declined', responded_at: new Date().toISOString() })
         .eq('token', token);
-      if (error) throw { error: { code: 'GROCERY_INVITE_INVALID' } };
+      if (error) throw { error: { code: 'GROCERY_INVITE_NOT_FOUND' } };
       return {};
     },
     onSuccess: (data, variables) => {

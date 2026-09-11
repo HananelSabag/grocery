@@ -45,6 +45,25 @@ export default {
     listName: 'שם הרשימה',
   },
 
+  /**
+   * Failure codes this app raises that SpendWise's server never did — mostly
+   * because the failure is now a Supabase one. Merged into the carried-over
+   * block rather than replacing it, so both halves survive.
+   */
+  errors: {
+    ...grocery.errors,
+    GROCERY_NOT_AUTHENTICATED: 'צריך להתחבר מחדש',
+    GROCERY_NO_LIST: 'לא מצאנו רשימה פעילה',
+    GROCERY_ADD_FAILED: 'לא הצלחנו להוסיף את הפריט',
+    GROCERY_UPDATE_FAILED: 'לא הצלחנו לשמור את השינוי',
+    GROCERY_DELETE_FAILED: 'לא הצלחנו למחוק את הפריט',
+    GROCERY_FINISH_FAILED: 'לא הצלחנו לסגור את הקנייה',
+    GROCERY_LEAVE_FAILED: 'לא הצלחנו לעזוב את הרשימה',
+    GROCERY_LINK_READ: 'לא הצלחנו לקרוא את קישור השיתוף',
+    // There is no server to fetch the page from — see lib/api.js.
+    GROCERY_SCRAPE_UNSUPPORTED: 'לא ניתן לקרוא את הדף — מלאו ידנית',
+  },
+
   common: {
     loading: 'טוען…',
     retry: 'נסה שוב',

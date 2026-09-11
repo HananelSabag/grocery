@@ -60,7 +60,7 @@ export const useLanguage = create((set, get) => ({
   },
 
   /**
-   * t('list.itemsLeft', { count: 3 })
+   * t('progress.remaining', { count: 3 })
    *
    * `fallback` is a reserved variable, not an interpolation: the ported
    * components look up server error codes by name — t(`errors.${code}`, {

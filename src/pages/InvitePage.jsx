@@ -53,7 +53,7 @@ export default function InvitePage() {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center gap-4 px-6 text-center">
         <ShoppingBasket className="h-12 w-12 text-gray-300 dark:text-gray-700" />
-        <p className="text-gray-600 dark:text-gray-300">{t('members.inviteInvalid')}</p>
+        <p className="text-gray-600 dark:text-gray-300">{t('invite.notFound')}</p>
         <button
           type="button"
           onClick={() => navigate('/', { replace: true })}

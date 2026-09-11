@@ -8,17 +8,19 @@ export default {
         // One brand colour, used for anything actionable. Green reads as
         // "fresh / groceries" and keeps the checked-off state (also green)
         // feeling like the same system rather than a second palette.
+        // Straight off the logo: the cart is navy, the two linked rings
+        // are these blues. Nothing in the UI invents a colour outside it.
         brand: {
-          50:  '#f0fdf4',
-          100: '#dcfce7',
-          200: '#bbf7d0',
-          300: '#86efac',
-          400: '#4ade80',
-          500: '#22c55e',
-          600: '#16a34a',
-          700: '#15803d',
-          800: '#166534',
-          900: '#14532d',
+          50:  '#eff6ff',
+          100: '#dbeafe',
+          200: '#bfdbfe',
+          300: '#93c5fd',
+          400: '#4a96f4',
+          500: '#3b82f6',
+          600: '#2864ef',
+          700: '#1d4ed8',
+          800: '#1e40af',
+          900: '#17325c',
         },
       },
       fontFamily: {

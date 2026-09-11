@@ -48,6 +48,12 @@ export default {
     GROCERY_SCRAPE_UNSUPPORTED: "Can't read that page — fill it in yourself",
   },
 
+  /** The profile's own stat tile — a count of what you personally ticked off. */
+  history: {
+    ...grocery.history,
+    statItems: 'Items you got',
+  },
+
   common: {
     loading: 'Loading…',
     retry: 'Try again',

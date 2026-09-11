@@ -37,7 +37,7 @@ export default function SignIn() {
   };
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50 px-6 dark:bg-gray-950">
+    <div className="app-bg flex min-h-screen flex-col px-6">
       {/* Language sits at the top, reachable before signing in: someone who
           cannot read the page cannot be expected to find it in a profile. */}
       <div className="flex justify-end pt-safe-t">

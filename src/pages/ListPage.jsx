@@ -163,13 +163,13 @@ export default function ListPage() {
   // sheet mid-use.
   if (isError && !list) {
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center px-8 text-center">
+      <div className="app-bg flex min-h-screen flex-col items-center justify-center px-8 text-center">
         <AlertCircle className="mb-3 h-10 w-10 text-red-400" strokeWidth={1.5} />
         <p className="mb-4 text-gray-600 dark:text-gray-300">{t('errors.generic')}</p>
         <button
           type="button"
           onClick={() => refetch()}
-          className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-bold text-white"
+          className="rounded-xl bg-brand-600 px-4 py-2 text-sm font-bold text-white"
         >
           {t('common.retry')}
         </button>
@@ -191,7 +191,7 @@ export default function ListPage() {
   return (
     <div
       dir={isRTL ? 'rtl' : 'ltr'}
-      className="min-h-screen bg-gray-50 dark:bg-gray-950"
+      className="app-bg min-h-screen"
       /* Room for the composer and a gap, off its measured height so it stays
          right when the keyboard changes it. */
       style={{ paddingBottom: `calc(var(${DOCK_HEIGHT_VAR}, 64px) + env(safe-area-inset-bottom) + 24px)` }}
@@ -220,20 +220,20 @@ export default function ListPage() {
                 <button
                   type="button"
                   onClick={() => setShareOpen(true)}
-                  className="flex w-full items-center gap-3 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2.5 text-start dark:border-blue-500/30 dark:bg-blue-500/10"
+                  className="glass glass-brand flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-start"
                 >
-                  <Users className="h-4 w-4 shrink-0 text-blue-500" />
+                  <Users className="h-4 w-4 shrink-0 text-brand-500" />
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-blue-900 dark:text-blue-200">
+                    <span className="block truncate text-sm font-semibold text-brand-900 dark:text-brand-200">
                       {t('banner.invitation', { name: invitationBanner.name })}
                     </span>
                     {invitationBanner.extra > 0 && (
-                      <span className="block text-xs text-blue-600 dark:text-blue-300">
+                      <span className="block text-xs text-brand-600 dark:text-brand-300">
                         {t('banner.invitationMore', { count: invitationBanner.extra })}
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-xs font-bold text-blue-600 dark:text-blue-300">
+                  <span className="shrink-0 text-xs font-bold text-brand-600 dark:text-brand-300">
                     {t('banner.view')}
                   </span>
                 </button>
@@ -242,7 +242,7 @@ export default function ListPage() {
 
             {isEmpty ? (
               <div className="flex flex-col items-center justify-center px-8 py-14 text-center">
-                <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-gray-300 shadow-sm dark:bg-gray-800 dark:text-gray-600">
+                <span className="glass mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-brand-400">
                   <ShoppingCart className="h-7 w-7 rtl:-scale-x-100" strokeWidth={1.5} />
                 </span>
                 <h2 className="mb-1.5 text-base font-bold text-gray-700 dark:text-gray-200">
@@ -254,7 +254,7 @@ export default function ListPage() {
                 <button
                   type="button"
                   onClick={focusQuickAdd}
-                  className="flex h-11 items-center gap-2 rounded-xl bg-blue-600 px-5 text-sm font-bold text-white"
+                  className="flex h-11 items-center gap-2 rounded-xl bg-brand-600 px-5 text-sm font-bold text-white"
                 >
                   <Plus className="h-4 w-4" strokeWidth={2.5} />
                   {t('empty.addFirst')}
@@ -368,7 +368,7 @@ export default function ListPage() {
             {sections.length > 1 && (
               <nav
                 aria-label={t('aisles.jumpTo')}
-                className="rounded-2xl border border-gray-100 bg-white p-3 dark:border-gray-700 dark:bg-gray-800/60"
+                className="glass rounded-2xl p-3"
               >
                 <ul className="flex flex-wrap gap-1">
                   {sections.map(({ key, items }) => {
@@ -398,7 +398,7 @@ export default function ListPage() {
 
             <GroceryQuickAdd ref={desktopQuickAddRef} onAdd={quickAdd} onExpand={expandDraft} />
 
-            <div className="rounded-2xl border border-gray-100 bg-white p-3.5 dark:border-gray-700 dark:bg-gray-800/60">
+            <div className="glass rounded-2xl p-3.5">
               <h3 className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-gray-500">
                 {t('share.members')}
               </h3>

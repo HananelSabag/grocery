@@ -6,22 +6,22 @@ const BUNDLES = { he, en };
 const STORAGE_KEY = 'grocery_lang';
 
 /**
- * Hebrew is the default, not English.
+ * Hebrew unless the user has said otherwise.
  *
- * The people this is for read Hebrew; falling back to English when a browser
- * reports an unfamiliar locale would put the wrong language in front of most
- * of them. English is opt-in, either by preference or by an explicitly
- * English browser.
+ * Deliberately not derived from `navigator.language`. This is a household
+ * app for a Hebrew-speaking house, and phones here are routinely set to
+ * English while the people holding them want Hebrew — so the browser's locale
+ * is a worse signal than the plain default. English is one tap away and, once
+ * tapped, is remembered.
  */
 const detectLanguage = () => {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
     if (saved === 'he' || saved === 'en') return saved;
   } catch {
-    /* private mode — fall through to the browser hint */
+    /* private mode — the default still applies */
   }
-  const nav = (navigator.language || '').toLowerCase();
-  return nav.startsWith('en') ? 'en' : 'he';
+  return 'he';
 };
 
 /** Walk a dotted key. Returns the key itself when missing, so gaps are visible. */

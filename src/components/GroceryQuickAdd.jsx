@@ -115,8 +115,8 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
   const ActiveIcon = active.icon;
 
   const iconButton = 'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-gray-400 '
-    + 'transition-colors hover:text-blue-600 focus-visible:outline focus-visible:outline-2 '
-    + 'focus-visible:outline-blue-500 dark:text-gray-500';
+    + 'transition-colors hover:text-brand-600 focus-visible:outline focus-visible:outline-2 '
+    + 'focus-visible:outline-brand-500 dark:text-gray-500';
 
   return (
     <div ref={rootRef} className={cn('relative', className)} style={style}>
@@ -124,7 +124,7 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
         <div
           role="listbox"
           aria-label={t('quickAdd.categoryHint')}
-          className="absolute bottom-full end-0 start-0 mb-2 max-h-64 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-2 shadow-xl dark:border-gray-700 dark:bg-gray-800"
+          className="glass glass-raised absolute bottom-full end-0 start-0 mb-2 max-h-64 overflow-y-auto rounded-2xl p-2"
         >
           <ul className="grid grid-cols-2 gap-1">
             {GROCERY_CATEGORIES.map((entry) => {
@@ -145,7 +145,7 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
                     className={cn(
                       'flex w-full items-center gap-2 rounded-xl px-2 py-2 text-start text-xs font-semibold',
                       selected
-                        ? 'bg-blue-50 text-blue-700 dark:bg-blue-500/15 dark:text-blue-300'
+                        ? 'bg-brand-50 text-brand-700 dark:bg-brand-500/15 dark:text-brand-300'
                         : 'text-gray-600 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700/60'
                     )}
                   >
@@ -159,7 +159,7 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
         </div>
       )}
 
-      <div className="flex items-center gap-1 rounded-2xl border border-gray-200 bg-white ps-1 pe-1 shadow-sm dark:border-gray-700 dark:bg-gray-800">
+      <div className="glass glass-raised flex items-center gap-1 rounded-2xl ps-1 pe-1">
         {/* The guess, made visible. Tap to correct it. */}
         <button
           type="button"
@@ -168,7 +168,7 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
           aria-expanded={pickerOpen}
           className={cn(
             'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500',
             active.chip
           )}
         >
@@ -223,11 +223,13 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
           disabled={!canSubmit}
           aria-label={t('quickAdd.add')}
           className={cn(
-            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-colors',
-            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500',
+            'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl transition-all',
+            'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500',
+            // The one gradient every primary action in the app wears, so the
+            // submit key of this line reads as the same family as "finish".
             canSubmit
-              ? 'bg-blue-600 text-white hover:bg-blue-700'
-              : 'bg-gray-100 text-gray-300 dark:bg-gray-700 dark:text-gray-600'
+              ? 'gradient-action gradient-glow text-white active:scale-90'
+              : 'bg-gray-200/60 text-gray-400 dark:bg-gray-700/50 dark:text-gray-600'
           )}
         >
           <Plus className="h-5 w-5" strokeWidth={2.5} />

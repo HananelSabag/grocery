@@ -10,7 +10,7 @@ import { ShoppingBasket } from 'lucide-react';
  */
 export default function Splash() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-950">
+    <div className="app-bg flex min-h-screen items-center justify-center">
       <ShoppingBasket
         className="h-10 w-10 text-brand-600 dark:text-brand-400 animate-pulse"
         aria-label="טוען"

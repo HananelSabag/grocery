@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Receipt, User, Users } from 'lucide-react';
+import { ChevronDown, History, User, Users } from 'lucide-react';
 import { cn } from '../lib/helpers';
 
 /**
@@ -28,13 +28,12 @@ export default function GroceryToolbar({
 }) {
   const progressPercent = Math.min(100, Math.max(0, Number(progress) || 0));
 
-  // 44px, because these are the two smallest tap targets on the screen.
+  // 44px, because these are the smallest tap targets on the screen.
   const iconButton = cn(
-    'relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border',
-    'border-gray-200 bg-white text-gray-600 transition-colors',
-    'hover:bg-blue-50 hover:text-blue-700',
-    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500',
-    'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
+    'glass relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl',
+    'text-gray-600 transition-all active:scale-95',
+    'hover:text-brand-600 dark:text-gray-300 dark:hover:text-brand-400',
+    'focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500'
   );
 
   return (
@@ -42,6 +41,17 @@ export default function GroceryToolbar({
       <h1 className="sr-only">{t('title')}</h1>
 
       <div className="flex items-center gap-2">
+        {/* The mark, at the size it was drawn for. Standalone there is no app
+            shell above this row, so without it nothing on screen says which
+            app you are in. */}
+        <img
+          src="/favicon.svg"
+          alt=""
+          width="36"
+          height="36"
+          className="h-9 w-9 shrink-0 rounded-xl"
+        />
+
         <div className="min-w-0 flex-1">
           {/* The list's name is only worth a line when there is more than one. */}
           {onSwitchList ? (
@@ -49,7 +59,7 @@ export default function GroceryToolbar({
               type="button"
               onClick={onSwitchList}
               aria-label={`${t('lists.switchTo')}: ${activeListLabel}`}
-              className="flex max-w-full items-center gap-1 rounded-lg text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+              className="flex max-w-full items-center gap-1 rounded-lg text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
             >
               <span className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">
                 {activeListLabel}
@@ -69,11 +79,13 @@ export default function GroceryToolbar({
           </p>
         </div>
 
-        {/* A receipt, not a clock-with-arrow: at 16px that glyph is hard to
-            tell from a refresh spinner, and what is behind this button is
-            literally the receipts. */}
+        {/* A clock-with-arrow. The receipt glyph that used to be here was
+            picked because at 16px a history icon reads as a refresh spinner —
+            but that only trades one confusion for another, since a receipt is
+            also the thing you attach TO a shop. Bigger and unambiguous beats
+            smaller and clever. */}
         <button type="button" onClick={onHistory} aria-label={t('history.open')} className={iconButton}>
-          <Receipt className="h-4 w-4 rtl:-scale-x-100" />
+          <History className="h-[18px] w-[18px] rtl:-scale-x-100" />
         </button>
 
         <button type="button" onClick={onShare} aria-label={t('share.title')} className={cn(iconButton, 'lg:hidden')}>
@@ -107,7 +119,7 @@ export default function GroceryToolbar({
           <div
             className={cn(
               'h-full rounded-full transition-[width] duration-200 motion-reduce:transition-none',
-              progressPercent >= 100 ? 'bg-emerald-500' : 'bg-blue-500'
+              progressPercent >= 100 ? 'bg-emerald-500' : 'bg-brand-500'
             )}
             style={{ width: `${progressPercent}%` }}
           />

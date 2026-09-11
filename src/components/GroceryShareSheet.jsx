@@ -110,9 +110,9 @@ const GroceryShareSheet = ({ isOpen, onClose, members, role, currentUserId }) =>
             {myInvitations.map((invitation) => (
               <div
                 key={invitation.token}
-                className="rounded-2xl border border-blue-200 bg-blue-50 p-3 dark:border-blue-500/30 dark:bg-blue-500/10"
+                className="rounded-2xl border border-brand-200 bg-brand-50 p-3 dark:border-brand-500/30 dark:bg-brand-500/10"
               >
-                <p className="text-sm font-semibold text-blue-900 dark:text-blue-200">
+                <p className="text-sm font-semibold text-brand-900 dark:text-brand-200">
                   {t('banner.invitation', {
                     name: invitation.inviter_first_name || invitation.inviter_username,
                   })}
@@ -121,14 +121,14 @@ const GroceryShareSheet = ({ isOpen, onClose, members, role, currentUserId }) =>
                   <button
                     type="button"
                     onClick={() => respond(invitation.token, 'accept')}
-                    className="h-10 flex-1 rounded-xl bg-blue-600 text-xs font-bold text-white hover:bg-blue-700"
+                    className="h-10 flex-1 rounded-xl bg-brand-600 text-xs font-bold text-white "
                   >
                     {t('invite.accept')}
                   </button>
                   <button
                     type="button"
                     onClick={() => respond(invitation.token, 'decline')}
-                    className="h-10 flex-1 rounded-xl border border-blue-200 text-xs font-bold text-blue-700 dark:border-blue-500/40 dark:text-blue-300"
+                    className="h-10 flex-1 rounded-xl border border-brand-200 text-xs font-bold text-brand-700 dark:border-blue-500/40 dark:text-brand-300"
                   >
                     {t('invite.decline')}
                   </button>
@@ -149,7 +149,7 @@ const GroceryShareSheet = ({ isOpen, onClose, members, role, currentUserId }) =>
                 'flex h-12 w-full items-center justify-center gap-2 rounded-2xl text-sm font-bold transition-colors',
                 copied
                   ? 'bg-emerald-600 text-white'
-                  : 'bg-blue-600 text-white hover:bg-blue-700',
+                  : 'bg-brand-600 text-white ',
                 busy && 'opacity-70'
               )}
             >

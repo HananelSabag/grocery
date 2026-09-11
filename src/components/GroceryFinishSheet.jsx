@@ -28,7 +28,7 @@ const GroceryFinishSheet = ({ isOpen, onClose, onConfirm, purchasedCount, pendin
   const inputClass = cn(
     'h-12 w-full rounded-xl border px-3 text-[15px]',
     'border-gray-200 bg-white text-gray-900 placeholder:text-gray-400',
-    'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500',
+    'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-brand-500',
     'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50 dark:placeholder:text-gray-500'
   );
   const labelClass = 'mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-gray-500 dark:text-gray-400';

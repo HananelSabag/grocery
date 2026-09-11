@@ -1,3 +1,4 @@
+import { useMemo } from 'react';
 import { create } from 'zustand';
 import { supabase } from '../lib/supabase';
 
@@ -34,14 +35,26 @@ export const initAuth = () => {
   return () => sub.subscription.unsubscribe();
 };
 
-/** The display name and picture Google gave us, with sane fallbacks. */
-export const useProfile = () =>
-  useAuth((s) => {
-    const meta = s.user?.user_metadata ?? {};
+/**
+ * The display name and picture Google gave us, with sane fallbacks.
+ *
+ * The derivation happens in useMemo, NOT inside the selector. A selector that
+ * builds an object returns a new reference on every call, and the store
+ * compares snapshots with Object.is — so React re-renders, calls the selector
+ * again, gets another new object, and loops until it gives up with "Maximum
+ * update depth exceeded". Selecting the one stable value and shaping it
+ * afterwards keeps the snapshot identical between renders.
+ */
+export const useProfile = () => {
+  const user = useAuth((s) => s.user);
+
+  return useMemo(() => {
+    const meta = user?.user_metadata ?? {};
     return {
-      id: s.user?.id ?? null,
-      email: s.user?.email ?? null,
-      name: meta.full_name || meta.name || s.user?.email?.split('@')[0] || '',
+      id: user?.id ?? null,
+      email: user?.email ?? null,
+      name: meta.full_name || meta.name || user?.email?.split('@')[0] || '',
       avatar: meta.avatar_url || meta.picture || null,
     };
-  });
+  }, [user]);
+};

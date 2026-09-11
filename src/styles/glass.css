@@ -1,0 +1,199 @@
+/**
+ * Liquid-glass design system.
+ *
+ * Same three tiers as the Workout Tracker's, in CSS:
+ *   .glass        — the frosted plate: translucent fill, bright top-edge
+ *                   highlight, hairline border.
+ *   .glass-card   — the same plate with a coloured accent wash, for content
+ *                   that has a state (in the cart, active, claimed).
+ *   .app-bg       — the gradient and light blobs the glass refracts.
+ *
+ * That last one is not decoration. Glass with nothing behind it is just a grey
+ * box with a border; the blobs are what it has to bend. Remove them and the
+ * whole system collapses into flat cards.
+ *
+ * The tints differ between light and dark on purpose: glass over a bright
+ * surface needs *more* white and a darker border, while glass over a dark
+ * surface needs only a faint white veil or it turns milky.
+ */
+
+:root {
+  /* Straight off the logo: the cart is navy, the two linked rings are these
+     two blues. Everything actionable in the app is drawn from them, so the
+     icon and the interface read as one thing. */
+  --brand-400: 74 150 244;   /* #4A96F4 — the lighter ring */
+  --brand-500: 59 130 246;
+  --brand-600: 40 100 239;   /* #2864EF — the deeper ring, primary action */
+  --brand-700: 29 78 216;
+  --brand-900: 23 50 92;     /* #17325C — the cart body */
+
+  /* Borrowed from the same system, for the states this app actually has. */
+  --mint: 16 185 129;        /* in the cart, done */
+  --violet: 139 92 246;      /* the second half of the accent gradient */
+  --amber: 245 158 11;       /* claimed by someone else */
+  --rose: 244 63 94;         /* destructive */
+
+  /* Glass, light theme. */
+  --glass-fill: 255 255 255;
+  --glass-fill-a: 0.72;
+  --glass-border: 15 23 42;
+  --glass-border-a: 0.08;
+  --glass-highlight-a: 0.9;
+  --glass-shadow: 15 23 42;
+  --glass-shadow-a: 0.06;
+}
+
+:root.dark {
+  /* Over a dark ground the veil is faint — a white fill anywhere near the
+     light theme's turns the plate milky and kills the refraction. */
+  --glass-fill: 30 41 59;
+  --glass-fill-a: 0.55;
+  --glass-border: 255 255 255;
+  --glass-border-a: 0.1;
+  --glass-highlight-a: 0.14;
+  --glass-shadow: 0 0 0;
+  --glass-shadow-a: 0.3;
+}
+
+/* ── The backdrop ───────────────────────────────────────────────────────── */
+
+.app-bg {
+  position: relative;
+  isolation: isolate;
+  background:
+    linear-gradient(180deg, rgb(239 246 255) 0%, rgb(248 250 252) 45%, rgb(241 245 249) 100%);
+}
+
+:root.dark .app-bg {
+  background:
+    linear-gradient(180deg, rgb(9 14 28) 0%, rgb(11 17 32) 45%, rgb(7 11 22) 100%);
+}
+
+/* Two soft blobs, fixed so they stay put while the list scrolls over them —
+   the refraction should feel like the glass moving, not the light. */
+.app-bg::before,
+.app-bg::after {
+  content: '';
+  position: fixed;
+  z-index: -1;
+  border-radius: 9999px;
+  filter: blur(72px);
+  pointer-events: none;
+}
+
+.app-bg::before {
+  inset-block-start: -14%;
+  inset-inline-end: -22%;
+  width: 78vw;
+  max-width: 460px;
+  aspect-ratio: 1;
+  background: rgb(var(--brand-400) / 0.28);
+}
+
+.app-bg::after {
+  inset-block-end: -18%;
+  inset-inline-start: -26%;
+  width: 72vw;
+  max-width: 420px;
+  aspect-ratio: 1;
+  background: rgb(var(--violet) / 0.2);
+}
+
+:root.dark .app-bg::before { background: rgb(var(--brand-600) / 0.3); }
+:root.dark .app-bg::after  { background: rgb(var(--violet) / 0.22); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .app-bg::before { animation: drift-a 26s ease-in-out infinite alternate; }
+  .app-bg::after  { animation: drift-b 31s ease-in-out infinite alternate; }
+}
+
+@keyframes drift-a {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(-6%, 5%, 0) scale(1.12); }
+}
+
+@keyframes drift-b {
+  from { transform: translate3d(0, 0, 0) scale(1); }
+  to   { transform: translate3d(7%, -6%, 0) scale(1.1); }
+}
+
+/* ── The plate ──────────────────────────────────────────────────────────── */
+
+.glass {
+  position: relative;
+  background: rgb(var(--glass-fill) / var(--glass-fill-a));
+  border: 1px solid rgb(var(--glass-border) / var(--glass-border-a));
+  box-shadow:
+    0 1px 2px rgb(var(--glass-shadow) / var(--glass-shadow-a)),
+    0 8px 24px -12px rgb(var(--glass-shadow) / var(--glass-shadow-a));
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+}
+
+/* The top-edge highlight — a real plate of glass catches the light along its
+   upper lip, and this one line is most of why it reads as glass rather than
+   as a translucent div. */
+.glass::before {
+  content: '';
+  position: absolute;
+  inset-inline: 0;
+  inset-block-start: 0;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgb(255 255 255 / var(--glass-highlight-a)) 22%,
+    rgb(255 255 255 / var(--glass-highlight-a)) 78%,
+    transparent
+  );
+  pointer-events: none;
+  border-start-start-radius: inherit;
+  border-start-end-radius: inherit;
+}
+
+/* Raised: what floats over the list — the composer, a sheet. */
+.glass-raised {
+  --glass-fill-a: 0.86;
+  box-shadow:
+    0 2px 8px rgb(var(--glass-shadow) / var(--glass-shadow-a)),
+    0 20px 48px -20px rgb(var(--glass-shadow) / calc(var(--glass-shadow-a) * 2.4));
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+}
+
+:root.dark .glass-raised { --glass-fill-a: 0.78; }
+
+/* ── Accent washes ──────────────────────────────────────────────────────── */
+
+.glass-mint   { background: linear-gradient(135deg, rgb(var(--mint) / 0.14), rgb(var(--mint) / 0.04)), rgb(var(--glass-fill) / var(--glass-fill-a)); }
+.glass-brand  { background: linear-gradient(135deg, rgb(var(--brand-500) / 0.14), rgb(var(--brand-500) / 0.04)), rgb(var(--glass-fill) / var(--glass-fill-a)); }
+.glass-amber  { background: linear-gradient(135deg, rgb(var(--amber) / 0.16), rgb(var(--amber) / 0.05)), rgb(var(--glass-fill) / var(--glass-fill-a)); }
+
+/* ── The one gradient every primary action wears ────────────────────────── */
+
+.gradient-action {
+  background-image: linear-gradient(135deg, rgb(var(--brand-600)), rgb(var(--violet)));
+}
+
+.gradient-glow {
+  box-shadow: 0 6px 20px -6px rgb(var(--brand-600) / 0.55);
+}
+
+/* ── Motion ─────────────────────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .app-bg::before,
+  .app-bg::after {
+    animation: none;
+  }
+}
+
+/* Safari on iOS drops backdrop-filter inside a transformed ancestor, which is
+   every framer-motion sheet. The fallback is an opaque plate — less pretty,
+   but never a smear of unreadable text over the list. */
+@supports not (backdrop-filter: blur(1px)) {
+  .glass,
+  .glass-raised {
+    --glass-fill-a: 0.97;
+  }
+}

@@ -136,7 +136,7 @@ export function useGroceryTripActions() {
         .upload(path, file, { contentType: file.type, upsert: false });
 
       if (uploadError) {
-        toast.error(t('errors.GROCERY_RECEIPT_UPLOAD', { fallback: t('errors.generic') }));
+        toast.error(t('errors.GROCERY_RECEIPT_UPLOAD_FAILED', { fallback: t('errors.generic') }));
         return false;
       }
 
@@ -167,7 +167,7 @@ export function useGroceryTripActions() {
       .single();
 
     if (error || !trip?.receipt_path) {
-      toast.error(t('errors.GROCERY_RECEIPT_MISSING', { fallback: t('errors.generic') }));
+      toast.error(t('errors.GROCERY_RECEIPT_NOT_FOUND', { fallback: t('errors.generic') }));
       return null;
     }
 

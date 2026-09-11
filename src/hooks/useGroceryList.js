@@ -183,7 +183,7 @@ export function useGroceryList() {
       .maybeSingle();
 
     if (error) return fail('GROCERY_UPDATE_FAILED');
-    if (!data) return fail('GROCERY_ITEM_CONFLICT');
+    if (!data) return fail('GROCERY_ITEM_STALE');
     refresh();
     return data;
   }, [fail, refresh]);
@@ -249,7 +249,7 @@ export function useGroceryList() {
       .maybeSingle();
 
     if (error) return fail('GROCERY_UPDATE_FAILED');
-    if (!data) { fail('GROCERY_ITEM_LOCKED'); return false; }
+    if (!data) { fail('GROCERY_ITEM_BUSY'); return false; }
     return true;
   }, [user?.id, fail]);
 

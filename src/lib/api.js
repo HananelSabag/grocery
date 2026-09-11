@@ -40,7 +40,7 @@ export const api = {
       const { error } = await supabase.storage
         .from('grocery-items')
         .upload(path, file, { contentType: file.type, upsert: false });
-      if (error) return fail('GROCERY_IMAGE_UPLOAD');
+      if (error) return fail('GROCERY_IMAGE_UPLOAD_FAILED');
 
       const { data } = supabase.storage.from('grocery-items').getPublicUrl(path);
       return ok({ imageUrl: data.publicUrl });

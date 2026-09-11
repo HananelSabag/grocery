@@ -116,10 +116,11 @@ const GroceryItemRow = ({ item, onToggle, onOpen, onDelete, currentUserId }) => 
       exit={{ opacity: 0, scale: 0.98 }}
       transition={{ duration: 0.16 }}
       className={cn(
-        'group relative flex items-stretch rounded-xl border transition-colors',
-        purchased
-          ? 'border-transparent bg-gray-50/70 dark:bg-gray-800/40'
-          : 'border-gray-100 bg-white hover:border-gray-200 dark:border-gray-700/70 dark:bg-gray-800/70 dark:hover:border-gray-600'
+        // A frosted plate per row. Bought rows take the mint wash, so the
+        // cart filling up is visible as colour down the list rather than as
+        // a count you have to read.
+        'glass group relative flex items-stretch rounded-xl transition-colors',
+        purchased && 'glass-mint'
       )}
     >
       {/* The row itself is the check target. */}
@@ -136,7 +137,7 @@ const GroceryItemRow = ({ item, onToggle, onOpen, onDelete, currentUserId }) => 
         aria-label={purchased ? t('item.markNotPurchased') : t('item.markPurchased')}
         className={cn(
           'flex min-h-[46px] flex-1 select-none items-center gap-2 rounded-xl py-1.5 pe-2 text-start',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 focus-visible:ring-inset',
           disabled && 'cursor-not-allowed opacity-60'
         )}
       >
@@ -192,7 +193,7 @@ const GroceryItemRow = ({ item, onToggle, onOpen, onDelete, currentUserId }) => 
           rel="noopener noreferrer"
           onClick={(event) => event.stopPropagation()}
           aria-label={t('item.openLink')}
-          className="flex w-11 shrink-0 items-center justify-center text-gray-400 transition-colors hover:text-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 dark:text-gray-500"
+          className="flex w-11 shrink-0 items-center justify-center text-gray-400 transition-colors hover:text-brand-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500 dark:text-gray-500"
         >
           <ExternalLink className="h-4 w-4 rtl:-scale-x-100" />
         </a>
@@ -206,7 +207,7 @@ const GroceryItemRow = ({ item, onToggle, onOpen, onDelete, currentUserId }) => 
           onClick={() => setShowPhoto((open) => !open)}
           aria-label={t('item.hasPhoto')}
           aria-expanded={showPhoto}
-          className="me-2 flex w-11 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500"
+          className="me-2 flex w-11 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-500"
         >
           <img
             src={item.image_url}

@@ -115,7 +115,7 @@ const BottomSheet = ({
             aria-label={title ? undefined : t('dialog', { fallback: 'Dialog' })}
             className={cn(
               'fixed bottom-0 left-0 right-0 z-[201]',
-              'bg-white dark:bg-gray-900',
+              'glass glass-raised',
               'rounded-t-2xl shadow-2xl',
               'flex flex-col',
               heightClass,

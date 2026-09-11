@@ -185,7 +185,7 @@ const GroceryItemSheet = ({ isOpen, onClose, onSave, onDelete, item, prefill }) 
   const field = cn(
     'h-11 w-full rounded-xl border px-3 text-[15px]',
     'border-gray-200 bg-white text-gray-900 placeholder:text-gray-400',
-    'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500',
+    'focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-brand-500',
     'dark:border-gray-700 dark:bg-gray-800 dark:text-gray-50 dark:placeholder:text-gray-500'
   );
   const label = 'mb-1 block text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-gray-500';
@@ -246,7 +246,7 @@ const GroceryItemSheet = ({ isOpen, onClose, onSave, onDelete, item, prefill }) 
           />
           </div>
           {!categoryPinned && draft.name.trim() && (
-            <p className="mt-1 text-[11px] text-blue-500 dark:text-blue-400">
+            <p className="mt-1 text-[11px] text-brand-500 dark:text-blue-400">
               {t('fields.categoryGuessed')}
             </p>
           )}
@@ -407,8 +407,8 @@ const GroceryItemSheet = ({ isOpen, onClose, onSave, onDelete, item, prefill }) 
             onClick={handleSave}
             disabled={saving || !draft.name.trim()}
             className={cn(
-              'h-12 flex-[2] rounded-xl bg-blue-600 text-sm font-bold text-white transition-colors',
-              'hover:bg-blue-700 disabled:bg-gray-200 disabled:text-gray-400',
+              'h-12 flex-[2] rounded-xl bg-brand-600 text-sm font-bold text-white transition-colors',
+              ' disabled:bg-gray-200 disabled:text-gray-400',
               'dark:disabled:bg-gray-700 dark:disabled:text-gray-500'
             )}
           >

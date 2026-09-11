@@ -41,7 +41,7 @@ const GroceryListSwitcher = ({ isOpen, onClose, lists, activeListId, onSwitch, b
                 className={cn(
                   'flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-start transition-colors',
                   active
-                    ? 'border-blue-500 bg-blue-50 dark:border-blue-400 dark:bg-blue-500/10'
+                    ? 'border-blue-500 bg-brand-50 dark:border-blue-400 dark:bg-brand-500/10'
                     : 'border-gray-200 hover:border-gray-300 dark:border-gray-700',
                   busyId && !busy && 'opacity-50'
                 )}
@@ -49,7 +49,7 @@ const GroceryListSwitcher = ({ isOpen, onClose, lists, activeListId, onSwitch, b
                 <span className={cn(
                   'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
                   active
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-brand-600 text-white'
                     : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'
                 )}>
                   {busy
@@ -71,7 +71,7 @@ const GroceryListSwitcher = ({ isOpen, onClose, lists, activeListId, onSwitch, b
                   </span>
                 </span>
 
-                {active && <Check className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />}
+                {active && <Check className="h-4 w-4 shrink-0 text-brand-600 dark:text-blue-400" />}
               </button>
             </li>
           );

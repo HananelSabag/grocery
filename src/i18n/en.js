@@ -1,4 +1,14 @@
+import grocery from './en.grocery';
+
+/** English. See he.js — same shape, same reasoning. */
 export default {
+  ...grocery,
+
+  // BottomSheet was written against the 'common' namespace and reads these
+  // two unqualified. Kept at the top level so it needs no edit.
+  close: 'Close',
+  dialog: 'Dialog',
+
   app: {
     name: 'Grocery',
     tagline: 'One list, for the whole house',
@@ -12,93 +22,6 @@ export default {
     signOut: 'Sign out',
     failed: 'Sign-in failed. Try again.',
     noPassword: 'No passwords — Google sign-in only',
-  },
-
-  list: {
-    title: 'The list',
-    empty: 'Nothing on the list',
-    emptyHint: 'Add the first item',
-    toBuy: 'To buy',
-    inCart: 'In the cart',
-    itemsLeft: '{{count}} left',
-    allDone: 'Everything is in the cart',
-    addItem: 'Add item',
-    itemName: 'What do we need?',
-    quantity: 'Qty',
-    unit: 'Unit',
-    note: 'Note',
-    category: 'Category',
-    save: 'Save',
-    cancel: 'Cancel',
-    delete: 'Delete',
-    edit: 'Edit',
-    addedBy: '{{name}} added it',
-    boughtBy: '{{name}} got it',
-    deleteConfirm: 'Delete {{name}}?',
-    conflict: 'Someone else just changed this item. Refresh and try again.',
-  },
-
-  trip: {
-    finish: 'Finish shopping',
-    finishTitle: 'Close this shop?',
-    storeName: 'Where did you shop?',
-    total: 'What did it come to?',
-    totalHint: 'You can skip this',
-    confirm: 'Close it',
-    leftoverNote: '{{count}} unbought items move to the next list',
-    done: 'Shopping closed',
-    history: 'History',
-    historyEmpty: 'No finished shops yet',
-    itemCount: '{{count}} items',
-  },
-
-  members: {
-    title: 'Who is on the list',
-    invite: 'Invite',
-    inviteTitle: 'Invite to the list',
-    inviteEmail: 'Email address',
-    inviteSend: 'Send invite',
-    inviteLink: 'Copy link',
-    inviteCopied: 'Link copied',
-    owner: 'Owner',
-    member: 'Member',
-    remove: 'Remove',
-    leave: 'Leave list',
-    leaveConfirm: 'Leave this list?',
-    pending: 'Pending',
-    joined: 'You joined the list',
-    inviteInvalid: 'That invitation is not valid, or it expired',
-  },
-
-  // Keys match src/lib/categories.js — the value stored in items.category_key.
-  categories: {
-    produce: 'Fruit & veg',
-    bakery: 'Bakery',
-    dairy_eggs: 'Dairy & eggs',
-    meat_fish: 'Meat & fish',
-    pantry: 'Pantry',
-    frozen: 'Frozen',
-    snacks_sweets: 'Snacks & sweets',
-    beverages: 'Drinks',
-    alcohol: 'Alcohol',
-    baby: 'Baby',
-    household: 'Household',
-    disposables: 'Disposables',
-    personal_care: 'Personal care',
-    other: 'Other',
-  },
-
-  // Keys match GROCERY_UNITS in src/lib/categories.js.
-  units: {
-    unit: 'pc',
-    kg: 'kg',
-    g: 'g',
-    l: 'L',
-    ml: 'ml',
-    pack: 'pack',
-    box: 'box',
-    bottle: 'bottle',
-    bag: 'bag',
   },
 
   profile: {
@@ -119,5 +42,8 @@ export default {
     back: 'Back',
     close: 'Close',
     confirm: 'OK',
+    cancel: 'Cancel',
+    save: 'Save',
+    delete: 'Delete',
   },
 };

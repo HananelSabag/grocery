@@ -28,6 +28,43 @@ export const formatMoney = (value) => {
   }).format(n);
 };
 
+/**
+ * The two helpers the ported components expect, kept at the names they call.
+ *
+ * SpendWise backs `dateHelpers.format` with date-fns and its full pattern
+ * language. The grocery screens use exactly two of those patterns, so they are
+ * implemented here against Intl rather than pulling in the library for them.
+ */
+export const currency = {
+  format: (amount, currencyCode = 'ILS', locale = 'he-IL') =>
+    new Intl.NumberFormat(locale, {
+      style: 'currency',
+      currency: currencyCode,
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 2,
+    }).format(Number(amount) || 0),
+};
+
+const LOCALES = { he: 'he-IL', en: 'en-GB' };
+
+const PATTERNS = {
+  // date-fns 'PPP' — a long date. 'PPp' — long date plus the time.
+  PPP: { day: 'numeric', month: 'long', year: 'numeric' },
+  PPp: { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' },
+  PP:  { day: 'numeric', month: 'short', year: 'numeric' },
+  p:   { hour: '2-digit', minute: '2-digit' },
+};
+
+export const dateHelpers = {
+  format: (date, pattern = 'PP', language = 'he') => {
+    if (!date) return '';
+    const parsed = date instanceof Date ? date : new Date(date);
+    if (Number.isNaN(parsed.getTime())) return '';
+    const locale = LOCALES[language] || LOCALES.he;
+    return new Intl.DateTimeFormat(locale, PATTERNS[pattern] || PATTERNS.PP).format(parsed);
+  },
+};
+
 /** "היום" / "אתמול" / a short date — history rows, where the year is noise. */
 export const formatTripDate = (iso, language) => {
   if (!iso) return '';

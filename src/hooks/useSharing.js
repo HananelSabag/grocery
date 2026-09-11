@@ -1,83 +1,234 @@
+import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
-import { keys } from '../lib/queryClient';
+import { api } from '../lib/api';
 import { useAuth } from '../stores/auth';
+import { useActiveList } from '../stores/activeList';
+import { useToast } from './useToast';
+import { useTranslation } from '../i18n';
 
-/** Invitations this list's owner has sent and not yet had answered. */
-export const useInvitations = (listId) =>
-  useQuery({
-    queryKey: keys.invitations(listId),
-    enabled: !!listId,
+/**
+ * Invitations and membership.
+ *
+ * Same surface as SpendWise's `useGrocerySharing`, so the sheets ported from
+ * there call it unchanged — only what is underneath changed, from an Express
+ * API to Supabase.
+ */
+
+/** Invitations addressed to me, waiting to be answered. */
+export function useMyGroceryInvitations() {
+  const user = useAuth((s) => s.user);
+  const email = user?.email;
+
+  const query = useQuery({
+    queryKey: ['grocery', 'my-invitations', user?.id],
+    enabled: !!email,
+    staleTime: 30 * 1000,
+    refetchInterval: 60 * 1000,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
+    retry: 1,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('invitations')
-        .select('id, invitee_email, token, status, expires_at, created_at')
-        .eq('list_id', listId)
+        .select('id, token, list_id, created_at, expires_at, lists:list_id ( name ), profiles:inviter_id ( display_name, avatar_url )')
         .eq('status', 'pending')
+        .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
+
       if (error) throw error;
-      return data ?? [];
+
+      // The policy already limits this to invitations naming my address, but
+      // a link invitation (no email) is visible to the owner too — and their
+      // own link is not an invitation *to* them.
+      return (data ?? []).map((row) => ({
+        ...row,
+        list_name: row.lists?.name ?? null,
+        inviter_name: row.profiles?.display_name ?? null,
+        inviter_avatar: row.profiles?.avatar_url ?? null,
+      }));
     },
   });
+
+  return {
+    invitations: query.data ?? [],
+    count: (query.data ?? []).length,
+    isLoading: query.isLoading,
+    refetch: query.refetch,
+  };
+}
 
 /**
- * Create an invitation and hand back its link.
+ * The lists this user can open.
  *
- * No email is sent: there is no server to send one from, and a link the owner
- * pastes into whatever they already use to talk to this person (WhatsApp, in
- * practice) arrives more reliably than mail would. The email field is stored
- * so the invitee can also find the invitation waiting when they sign in.
+ * Usually one. A second appears when someone shares theirs.
  */
-export const useCreateInvite = (listId) => {
-  const queryClient = useQueryClient();
-  const user = useAuth((s) => s.user);
+export function useGroceryLists() {
+  const userId = useAuth((s) => s.user?.id);
 
-  return useMutation({
-    mutationFn: async (email) => {
+  const query = useQuery({
+    queryKey: ['grocery', 'lists', userId],
+    enabled: !!userId,
+    staleTime: 60 * 1000,
+    refetchOnWindowFocus: true,
+    retry: 1,
+    queryFn: async () => {
       const { data, error } = await supabase
+        .from('list_members')
+        .select('role, joined_at, lists:list_id ( id, name, owner_id, archived_at )')
+        .order('joined_at', { ascending: true });
+
+      if (error) throw error;
+
+      return (data ?? [])
+        .filter((row) => row.lists && !row.lists.archived_at)
+        .map((row) => ({
+          id: row.lists.id,
+          name: row.lists.name,
+          owner_id: row.lists.owner_id,
+          role: row.role,
+        }));
+    },
+  });
+
+  const lists = query.data ?? [];
+
+  return {
+    lists,
+    // One list is the normal case and needs no switcher at all.
+    hasMultiple: lists.length > 1,
+    isLoading: query.isLoading,
+  };
+}
+
+export function useGrocerySharing() {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const userId = useAuth((s) => s.user?.id);
+  const setActiveList = useActiveList((s) => s.setListId);
+  const { t } = useTranslation();
+
+  const invalidate = useCallback(() => {
+    queryClient.invalidateQueries({ queryKey: ['list'] });
+    queryClient.invalidateQueries({ queryKey: ['members'] });
+    queryClient.invalidateQueries({ queryKey: ['grocery', 'my-invitations', userId] });
+    // Accepting, leaving and disbanding change WHICH lists exist for this
+    // user, not just what is on one of them.
+    queryClient.invalidateQueries({ queryKey: ['grocery', 'lists', userId] });
+  }, [queryClient, userId]);
+
+  const reportFailure = useCallback((result) => {
+    const code = result?.error?.code;
+    toast.error(t(`errors.${code}`, { fallback: t('errors.generic') }));
+    return null;
+  }, [toast, t]);
+
+  /**
+   * Anything that changes which list you are on has to stop the client naming
+   * the old one, or the next read would ask for a list you just left.
+   */
+  const forgetCurrentList = useCallback(() => {
+    setActiveList(null);
+    queryClient.removeQueries({ queryKey: ['list'] });
+    queryClient.removeQueries({ queryKey: ['grocery', 'history', userId] });
+  }, [queryClient, setActiveList, userId]);
+
+  const inviteMutation = useMutation({
+    mutationFn: async (email) => {
+      const result = await api.grocery.invite(email);
+      if (!result.success) throw result;
+      return result.data;
+    },
+    onSuccess: invalidate,
+  });
+
+  const respondMutation = useMutation({
+    mutationFn: async ({ token, action }) => {
+      if (action === 'accept') {
+        const { data, error } = await supabase.rpc('accept_invitation', { p_token: token });
+        if (error) throw { error: { code: 'GROCERY_INVITE_INVALID' } };
+        return { listId: data };
+      }
+      const { error } = await supabase
         .from('invitations')
-        .insert({
-          list_id: listId,
-          inviter_id: user?.id,
-          invitee_email: email?.trim() ? email.trim().toLowerCase() : null,
-        })
-        .select('token')
-        .single();
-      if (error) throw error;
-      return `${window.location.origin}/invite/${data.token}`;
+        .update({ status: 'declined', responded_at: new Date().toISOString() })
+        .eq('token', token);
+      if (error) throw { error: { code: 'GROCERY_INVITE_INVALID' } };
+      return {};
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.invitations(listId) }),
-  });
-};
-
-export const useRevokeInvite = (listId) => {
-  const queryClient = useQueryClient();
-
-  return useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase.from('invitations').update({ status: 'revoked' }).eq('id', id);
-      if (error) throw error;
+    onSuccess: (data, variables) => {
+      // Accepting lands you on the list you just joined.
+      if (variables?.action === 'accept') {
+        forgetCurrentList();
+        if (data?.listId) setActiveList(data.listId);
+      }
+      invalidate();
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.invitations(listId) }),
   });
-};
 
-/** Remove someone from the list — or, when it is you, leave it. */
-export const useRemoveMember = (listId) => {
-  const queryClient = useQueryClient();
+  const cancelInviteMutation = useMutation({
+    mutationFn: async (email) => {
+      const result = await api.grocery.cancelInvite(email);
+      if (!result.success) throw result;
+      return result.data;
+    },
+    onSuccess: invalidate,
+  });
 
-  return useMutation({
+  const removeMemberMutation = useMutation({
     mutationFn: async (memberId) => {
       const { error } = await supabase.from('list_members').delete().eq('id', memberId);
-      if (error) throw error;
+      if (error) throw { error: { code: 'GROCERY_OWNER_ONLY' } };
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.members(listId) }),
+    onSuccess: invalidate,
   });
-};
+
+  const leaveMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from('list_members').delete().eq('user_id', userId);
+      if (error) throw { error: { code: 'GROCERY_LEAVE_FAILED' } };
+    },
+    onSuccess: () => { forgetCurrentList(); invalidate(); },
+  });
+
+  const disbandMutation = useMutation({
+    mutationFn: async (listId) => {
+      // Archived, not deleted: the history of what the household bought is
+      // worth more than the row, and a disband is easy to regret.
+      const { error } = await supabase
+        .from('lists')
+        .update({ archived_at: new Date().toISOString() })
+        .eq('id', listId);
+      if (error) throw { error: { code: 'GROCERY_OWNER_ONLY' } };
+    },
+    onSuccess: () => { forgetCurrentList(); invalidate(); },
+  });
+
+  const run = useCallback(async (mutation, arg) => {
+    try {
+      return await mutation.mutateAsync(arg);
+    } catch (thrown) {
+      return reportFailure(thrown?.error ? thrown : { error: {} });
+    }
+  }, [reportFailure]);
+
+  return {
+    invite: (email) => run(inviteMutation, email),
+    respond: (token, action) => run(respondMutation, { token, action }),
+    cancelInvite: (email) => run(cancelInviteMutation, email),
+    removeMember: (memberId) => run(removeMemberMutation, memberId),
+    leaveList: () => run(leaveMutation),
+    disband: (listId) => run(disbandMutation, listId),
+
+    isInviting: inviteMutation.isPending,
+    isResponding: respondMutation.isPending,
+    isDisbanding: disbandMutation.isPending,
+  };
+}
 
 /** Rename the list. Owner-only, enforced by policy rather than by hiding the field. */
-export const useRenameList = () => {
+export function useRenameList() {
   const queryClient = useQueryClient();
 
   return useMutation({
@@ -85,6 +236,6 @@ export const useRenameList = () => {
       const { error } = await supabase.from('lists').update({ name: name.trim() }).eq('id', listId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.list }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['list'] }),
   });
-};
+}

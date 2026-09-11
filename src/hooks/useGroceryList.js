@@ -1,298 +1,340 @@
-import { useEffect } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useCallback, useEffect, useMemo } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
-import { keys } from '../lib/queryClient';
 import { useAuth } from '../stores/auth';
+import { useActiveList } from '../stores/activeList';
+import { useToast } from './useToast';
+import { useTranslation } from '../i18n';
+import { categoryOrder, DEFAULT_CATEGORY } from '../lib/categories';
 
 /**
- * The list this user is working in, and its open shopping run.
+ * The whole of the list's state and every action on it.
  *
- * `ensure_list` is an RPC rather than a select because a brand-new user has
- * nothing to select: it creates the list, the membership and the first trip in
- * one statement, and returns the id. Callers can then treat "signed in" and
- * "has a list" as the same state.
+ * One hook rather than a dozen, because the screen needs them together and
+ * every mutation invalidates the same read. This is the same contract the page
+ * had when it lived inside SpendWise — same names, same shapes — so the screen
+ * ported across without being rewritten. What changed is underneath: an
+ * Express API became Supabase, and the authorization that used to sit in
+ * middleware now sits in RLS.
  */
-export const useList = () => {
-  const user = useAuth((s) => s.user);
 
-  return useQuery({
-    queryKey: keys.list,
-    enabled: !!user,
-    queryFn: async () => {
-      const { data: listId, error: rpcError } = await supabase.rpc('ensure_list');
-      if (rpcError) throw rpcError;
+const STATE_KEY = 'grocery-state';
 
-      const [{ data: list, error: listError }, { data: trip, error: tripError }] = await Promise.all([
-        supabase.from('lists').select('id, name, owner_id').eq('id', listId).single(),
-        supabase
-          .from('trips')
-          .select('id, list_id, status, created_at')
-          .eq('list_id', listId)
-          .eq('status', 'active')
-          .single(),
-      ]);
-      if (listError) throw listError;
-      if (tripError) throw tripError;
+/** How long an edit claim holds before anyone else may take the item. */
+const CLAIM_SECONDS = 90;
 
-      return { list, trip };
-    },
-  });
-};
-
-/**
- * The items on a trip, newest sort order first within each aisle.
- *
- * Ordering is done here rather than in the query because the display order is
- * a UI decision (aisle, then unbought before bought) and the server has no
- * opinion about it.
- */
-export const useItems = (tripId) => {
+export function useGroceryList() {
   const queryClient = useQueryClient();
+  const toast = useToast();
+  const { t } = useTranslation();
+  const user = useAuth((s) => s.user);
+  const activeListId = useActiveList((s) => s.listId);
+  const setActiveList = useActiveList((s) => s.setListId);
 
   const query = useQuery({
-    queryKey: keys.items(tripId),
-    enabled: !!tripId,
+    queryKey: [STATE_KEY, user?.id, activeListId],
+    enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
+      // `ensure_list` resolves through membership and creates nothing that
+      // already exists, so it is safe to call on every load — and it is what
+      // makes a brand-new account land on a working list rather than an empty
+      // screen with a "create one" button.
+      const { data: resolved, error: rpcError } = await supabase.rpc('ensure_list');
+      if (rpcError) throw rpcError;
+
+      // A saved choice is only ever a hint: if it names a list this user is
+      // not on, the select returns nothing and we fall back to their own
+      // rather than erroring.
+      let listId = resolved;
+      if (activeListId) {
+        const { data: chosen } = await supabase
+          .from('lists').select('id').eq('id', activeListId).maybeSingle();
+        if (chosen) listId = chosen.id;
+      }
+
+      const [listResult, tripResult, membersResult] = await Promise.all([
+        supabase.from('lists').select('id, name, owner_id').eq('id', listId).single(),
+        supabase.from('trips').select('id, list_id, status, created_at')
+          .eq('list_id', listId).eq('status', 'active').single(),
+        supabase.from('list_members')
+          .select('id, user_id, role, joined_at, profiles:user_id ( id, display_name, avatar_url )')
+          .eq('list_id', listId).order('joined_at', { ascending: true }),
+      ]);
+
+      if (listResult.error) throw listResult.error;
+      if (tripResult.error) throw tripResult.error;
+      if (membersResult.error) throw membersResult.error;
+
+      const { data: items, error: itemsError } = await supabase
         .from('items')
-        .select(`
-          id, trip_id, name, category_key, quantity, unit, note,
-          image_url, product_url, sort_order, is_purchased,
-          added_by, purchased_by, purchased_at, version, created_at
-        `)
-        .eq('trip_id', tripId)
+        .select(`id, trip_id, name, category_key, quantity, unit, note, image_url,
+                 product_url, sort_order, is_purchased, added_by, purchased_by,
+                 purchased_at, version, editing_user_id, editing_until, created_at,
+                 added:added_by ( display_name, avatar_url ),
+                 buyer:purchased_by ( display_name, avatar_url )`)
+        .eq('trip_id', tripResult.data.id)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
-      if (error) throw error;
-      return data ?? [];
+
+      if (itemsError) throw itemsError;
+
+      // Flatten the embeds to the field names the row component reads, so it
+      // never has to know these arrived as nested objects.
+      const members = (membersResult.data ?? []).map((member) => ({
+        ...member,
+        first_name: member.profiles?.display_name ?? null,
+        username:   member.profiles?.display_name ?? null,
+        avatar_url: member.profiles?.avatar_url ?? null,
+      }));
+
+      return {
+        list: listResult.data,
+        trip: tripResult.data,
+        members,
+        role: members.find((m) => m.user_id === user?.id)?.role ?? 'member',
+        items: (items ?? []).map(({ added, buyer, ...item }) => ({
+          ...item,
+          added_by_name:     added?.display_name ?? null,
+          purchased_by_name: buyer?.display_name ?? null,
+          purchased_by_avatar: buyer?.avatar_url ?? null,
+        })),
+      };
     },
   });
 
-  // Someone else is in the shop right now. Postgres changes arrive over the
-  // socket; the polling defaults in queryClient are only the fallback for when
-  // this never connects.
+  const tripId = query.data?.trip?.id ?? null;
+  const listId = query.data?.list?.id ?? null;
+
+  const refresh = useCallback(
+    () => queryClient.invalidateQueries({ queryKey: [STATE_KEY] }),
+    [queryClient]
+  );
+
+  /**
+   * Someone else is in the shop right now, and the point of a shared list is
+   * seeing that happen. Postgres changes arrive over the socket; the refetch
+   * defaults are only the fallback for when it never connects.
+   */
   useEffect(() => {
     if (!tripId) return undefined;
-
     const channel = supabase
       .channel(`items:${tripId}`)
-      .on(
-        'postgres_changes',
+      .on('postgres_changes',
         { event: '*', schema: 'grocery', table: 'items', filter: `trip_id=eq.${tripId}` },
-        () => queryClient.invalidateQueries({ queryKey: keys.items(tripId) })
-      )
+        refresh)
       .subscribe();
-
     return () => { supabase.removeChannel(channel); };
-  }, [tripId, queryClient]);
+  }, [tripId, refresh]);
 
-  return query;
-};
+  const fail = useCallback((code) => {
+    toast.error(t(`errors.${code}`, { fallback: t('errors.generic') }));
+    return null;
+  }, [toast, t]);
 
-/** Everyone on the list, for the avatars against each item. */
-export const useMembers = (listId) =>
-  useQuery({
-    queryKey: keys.members(listId),
-    enabled: !!listId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('list_members')
-        .select('id, user_id, role, joined_at, profiles:user_id (id, display_name, avatar_url)')
-        .eq('list_id', listId)
-        .order('joined_at', { ascending: true });
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  // ── Actions ───────────────────────────────────────────────────────────────
 
-/** Finished shops, newest first. */
-export const useHistory = (listId) =>
-  useQuery({
-    queryKey: keys.history(listId),
-    enabled: !!listId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('trips')
-        .select('id, store_name, total_ils, completed_at, completed_by, profiles:completed_by (display_name, avatar_url)')
-        .eq('list_id', listId)
-        .eq('status', 'completed')
-        .order('completed_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  const addItem = useCallback(async (payload) => {
+    if (!tripId) return null;
+    const { data, error } = await supabase
+      .from('items')
+      .insert({
+        name: payload.name,
+        category_key: payload.category_key || DEFAULT_CATEGORY,
+        quantity: payload.quantity === '' || payload.quantity == null ? null : Number(payload.quantity),
+        unit: payload.unit || null,
+        note: payload.note || null,
+        image_url: payload.image_url || null,
+        product_url: payload.product_url || null,
+        trip_id: tripId,
+        added_by: user?.id ?? null,
+      })
+      .select()
+      .single();
 
-// ---------------------------------------------------------------------------
-// Mutations
-// ---------------------------------------------------------------------------
+    if (error) return fail('GROCERY_ADD_FAILED');
+    refresh();
+    return data;
+  }, [tripId, user?.id, fail, refresh]);
 
-export const useAddItem = (tripId) => {
-  const queryClient = useQueryClient();
-  const user = useAuth((s) => s.user);
+  /**
+   * The version the editor read is part of the WHERE clause, so if someone
+   * saved first this matches nothing and we say so rather than silently
+   * overwriting them.
+   */
+  const updateItem = useCallback(async (id, payload, version) => {
+    const { data, error } = await supabase
+      .from('items')
+      .update({
+        name: payload.name,
+        category_key: payload.category_key || DEFAULT_CATEGORY,
+        quantity: payload.quantity === '' || payload.quantity == null ? null : Number(payload.quantity),
+        unit: payload.unit || null,
+        note: payload.note || null,
+        image_url: payload.image_url || null,
+        product_url: payload.product_url || null,
+        version: (version ?? 1) + 1,
+        editing_user_id: null,
+        editing_until: null,
+      })
+      .eq('id', id)
+      .eq('version', version ?? 1)
+      .select()
+      .maybeSingle();
 
-  return useMutation({
-    mutationFn: async (fields) => {
-      const { data, error } = await supabase
-        .from('items')
-        .insert({ ...fields, trip_id: tripId, added_by: user?.id ?? null })
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    if (error) return fail('GROCERY_UPDATE_FAILED');
+    if (!data) return fail('GROCERY_ITEM_CONFLICT');
+    refresh();
+    return data;
+  }, [fail, refresh]);
 
-    // Typing an item and watching it appear a beat later is the one place the
-    // network is felt, because it happens mid-sentence in a shop. Show it now.
-    onMutate: async (fields) => {
-      await queryClient.cancelQueries({ queryKey: keys.items(tripId) });
-      const previous = queryClient.getQueryData(keys.items(tripId));
-      queryClient.setQueryData(keys.items(tripId), (old = []) => [
-        ...old,
-        {
-          ...fields,
-          id: `optimistic-${Date.now()}`,
-          trip_id: tripId,
-          is_purchased: false,
-          added_by: user?.id ?? null,
-          version: 1,
-          created_at: new Date().toISOString(),
-          __optimistic: true,
-        },
-      ]);
-      return { previous };
-    },
-    onError: (_err, _fields, context) => {
-      if (context?.previous) queryClient.setQueryData(keys.items(tripId), context.previous);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: keys.items(tripId) }),
-  });
-};
+  /**
+   * Ticking off happens while walking through a shop one-handed, so it is
+   * optimistic and never interrupts: two people ticking the same item a second
+   * apart is not a conflict anyone cares about.
+   */
+  const togglePurchased = useCallback(async (item) => {
+    const next = !item.is_purchased;
+    const key = [STATE_KEY, user?.id, activeListId];
 
-/**
- * Tick an item off, or back on.
- *
- * Kept separate from the general update because it is the one action that
- * happens while walking, one-handed, and it must never fail loudly: the worst
- * case is that someone else ticked the same item a second earlier, which is
- * not a conflict anyone cares about.
- */
-export const useToggleItem = (tripId) => {
-  const queryClient = useQueryClient();
-  const user = useAuth((s) => s.user);
+    await queryClient.cancelQueries({ queryKey: key });
+    const previous = queryClient.getQueryData(key);
+    queryClient.setQueryData(key, (old) => old && ({
+      ...old,
+      items: old.items.map((row) => row.id === item.id
+        ? { ...row, is_purchased: next, purchased_by: next ? user?.id : null }
+        : row),
+    }));
 
-  return useMutation({
-    mutationFn: async ({ id, is_purchased }) => {
-      const { data, error } = await supabase
-        .from('items')
-        .update({
-          is_purchased,
-          purchased_by: is_purchased ? user?.id ?? null : null,
-          purchased_at: is_purchased ? new Date().toISOString() : null,
-        })
-        .eq('id', id)
-        .select()
-        .single();
-      if (error) throw error;
-      return data;
-    },
+    const { error } = await supabase
+      .from('items')
+      .update({
+        is_purchased: next,
+        purchased_by: next ? user?.id ?? null : null,
+        purchased_at: next ? new Date().toISOString() : null,
+      })
+      .eq('id', item.id);
 
-    onMutate: async ({ id, is_purchased }) => {
-      await queryClient.cancelQueries({ queryKey: keys.items(tripId) });
-      const previous = queryClient.getQueryData(keys.items(tripId));
-      queryClient.setQueryData(keys.items(tripId), (old = []) =>
-        old.map((item) =>
-          item.id === id
-            ? {
-                ...item,
-                is_purchased,
-                purchased_by: is_purchased ? user?.id ?? null : null,
-                purchased_at: is_purchased ? new Date().toISOString() : null,
-              }
-            : item
-        )
-      );
-      return { previous };
-    },
-    onError: (_err, _vars, context) => {
-      if (context?.previous) queryClient.setQueryData(keys.items(tripId), context.previous);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: keys.items(tripId) }),
-  });
-};
+    if (error) {
+      queryClient.setQueryData(key, previous);
+      return fail('GROCERY_UPDATE_FAILED');
+    }
+    refresh();
+    return true;
+  }, [queryClient, user?.id, activeListId, fail, refresh]);
 
-/**
- * Edit an item's details.
- *
- * The version the editor read is part of the WHERE clause, so if someone else
- * saved first this updates nothing and we can say so, rather than silently
- * overwriting their change. This is the only collision in a shared list that
- * a person would actually notice.
- */
-export const useUpdateItem = (tripId) => {
-  const queryClient = useQueryClient();
+  const deleteItem = useCallback(async (id) => {
+    const { error } = await supabase.from('items').delete().eq('id', id);
+    if (error) return fail('GROCERY_DELETE_FAILED');
+    refresh();
+    return true;
+  }, [fail, refresh]);
 
-  return useMutation({
-    mutationFn: async ({ id, version, ...fields }) => {
-      const { data, error } = await supabase
-        .from('items')
-        .update({ ...fields, version: version + 1 })
-        .eq('id', id)
-        .eq('version', version)
-        .select()
-        .maybeSingle();
-      if (error) throw error;
-      if (!data) {
-        const conflict = new Error('version conflict');
-        conflict.code = 'CONFLICT';
-        throw conflict;
-      }
-      return data;
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: keys.items(tripId) }),
-  });
-};
+  /**
+   * A short soft claim, so two phones don't open the same item's editor.
+   * A courtesy, not a lock — `version` is what actually prevents a lost
+   * update, and an expired claim is simply taken over.
+   */
+  const claimItem = useCallback(async (id) => {
+    const now = new Date();
+    const { data, error } = await supabase
+      .from('items')
+      .update({
+        editing_user_id: user?.id ?? null,
+        editing_until: new Date(now.getTime() + CLAIM_SECONDS * 1000).toISOString(),
+      })
+      .eq('id', id)
+      .or(`editing_until.is.null,editing_until.lt.${now.toISOString()},editing_user_id.eq.${user?.id}`)
+      .select()
+      .maybeSingle();
 
-export const useDeleteItem = (tripId) => {
-  const queryClient = useQueryClient();
+    if (error) return fail('GROCERY_UPDATE_FAILED');
+    if (!data) { fail('GROCERY_ITEM_LOCKED'); return false; }
+    return true;
+  }, [user?.id, fail]);
 
-  return useMutation({
-    mutationFn: async (id) => {
-      const { error } = await supabase.from('items').delete().eq('id', id);
-      if (error) throw error;
-      return id;
-    },
-    onMutate: async (id) => {
-      await queryClient.cancelQueries({ queryKey: keys.items(tripId) });
-      const previous = queryClient.getQueryData(keys.items(tripId));
-      queryClient.setQueryData(keys.items(tripId), (old = []) => old.filter((item) => item.id !== id));
-      return { previous };
-    },
-    onError: (_err, _id, context) => {
-      if (context?.previous) queryClient.setQueryData(keys.items(tripId), context.previous);
-    },
-    onSettled: () => queryClient.invalidateQueries({ queryKey: keys.items(tripId) }),
-  });
-};
+  const releaseItem = useCallback(async (id) => {
+    await supabase
+      .from('items')
+      .update({ editing_user_id: null, editing_until: null })
+      .eq('id', id)
+      .eq('editing_user_id', user?.id ?? '')
+      .then(() => {}, () => {});
+  }, [user?.id]);
 
-/** Close the shop. The RPC opens the next trip and carries unbought items over. */
-export const useFinishTrip = () => {
-  const queryClient = useQueryClient();
+  const completeTrip = useCallback(async ({ storeName, store_name, total, total_ils } = {}) => {
+    if (!tripId) return null;
+    const carriedOver = (query.data?.items ?? []).filter((item) => !item.is_purchased).length;
 
-  return useMutation({
-    mutationFn: async ({ tripId, storeName, total }) => {
-      const { data, error } = await supabase.rpc('finish_trip', {
-        p_trip_id: tripId,
-        p_store_name: storeName || null,
-        p_total_ils: total == null || total === '' ? null : Number(total),
-      });
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      // The trip id changed, so every key derived from it is stale.
-      queryClient.invalidateQueries();
-    },
-  });
-};
+    const { error } = await supabase.rpc('finish_trip', {
+      p_trip_id: tripId,
+      p_store_name: storeName ?? store_name ?? null,
+      p_total_ils: total === '' || total == null ? (total_ils ?? null) : Number(total),
+    });
+
+    if (error) return fail('GROCERY_FINISH_FAILED');
+    // The trip id changed, so history and everything keyed off it is stale.
+    queryClient.invalidateQueries();
+    return { carriedOver };
+  }, [tripId, query.data?.items, fail, queryClient]);
+
+  const switchList = useCallback(async (id) => {
+    setActiveList(id);
+    await queryClient.invalidateQueries();
+    return true;
+  }, [setActiveList, queryClient]);
+
+  // ── Derived view ──────────────────────────────────────────────────────────
+
+  const { sections, purchased, pendingCount, purchasedCount, progress } = useMemo(() => {
+    const items = query.data?.items ?? [];
+    const bought = items.filter((item) => item.is_purchased);
+    const pending = items.filter((item) => !item.is_purchased);
+
+    // Grouped by aisle, in the order a person walks a supermarket — which is
+    // the whole reason the categories are ordered rather than alphabetical.
+    const byCategory = new Map();
+    for (const item of pending) {
+      const key = item.category_key || DEFAULT_CATEGORY;
+      if (!byCategory.has(key)) byCategory.set(key, []);
+      byCategory.get(key).push(item);
+    }
+
+    return {
+      sections: [...byCategory.entries()]
+        .map(([key, entries]) => ({ key, items: entries }))
+        .sort((a, b) => categoryOrder(a.key) - categoryOrder(b.key)),
+      purchased: bought,
+      pendingCount: pending.length,
+      purchasedCount: bought.length,
+      progress: items.length ? Math.round((bought.length / items.length) * 100) : 0,
+    };
+  }, [query.data?.items]);
+
+  return {
+    isLoading: query.isLoading,
+    isError: query.isError,
+    refetch: query.refetch,
+
+    list: query.data?.list ?? null,
+    trip: query.data?.trip ?? null,
+    members: query.data?.members ?? [],
+    role: query.data?.role ?? 'member',
+    listId,
+
+    sections,
+    purchased,
+    pendingCount,
+    purchasedCount,
+    progress,
+
+    addItem,
+    updateItem,
+    togglePurchased,
+    deleteItem,
+    claimItem,
+    releaseItem,
+    completeTrip,
+    switchList,
+  };
+}

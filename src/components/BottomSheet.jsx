@@ -1,87 +1,165 @@
-import React, { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-
-import { cn } from '../lib/helpers';
-
 /**
- * The app's only modal shape.
- *
- * Every sheet is bottom-anchored because the thumb is at the bottom of the
- * phone; a centred dialog puts its buttons where the hand is not. The sheet
- * sits above the keyboard rather than behind it — `pb-safe-b` plus the
- * viewport resize is what keeps the first field visible when the keyboard
- * opens, which is the single most common way a sheet like this breaks.
+ * BottomSheet — mobile modal that slides up from the bottom.
+ * Drag handle at top, dark backdrop, rounded top corners.
+ * Uses Framer Motion for animation. Dismisses on backdrop click or drag down.
  */
-export default function BottomSheet({ open, onClose, title, children, footer }) {
-  // A sheet is a layer, so the page behind it must not scroll under the
-  // finger. Restoring the exact overflow value (not just clearing it) keeps
-  // two stacked sheets from leaving the body locked.
-  useEffect(() => {
-    if (!open) return undefined;
-    const previous = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
-  }, [open]);
 
-  useEffect(() => {
-    if (!open) return undefined;
-    const onKey = (event) => { if (event.key === 'Escape') onClose(); };
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
+import React, { useCallback, useEffect, useId, useRef } from 'react';
+import { motion, AnimatePresence, useDragControls } from 'framer-motion';
+import { X } from 'lucide-react';
+import { cn } from '../lib/helpers';
+import { useTranslation } from '../i18n';
 
-  return createPortal(
+const BottomSheet = ({
+  isOpen,
+  onClose,
+  children,
+  title,
+  className = '',
+  /** 'auto' (default) | 'full' (100dvh) | 'half' (50dvh) */
+  height = 'auto',
+}) => {
+  const { t } = useTranslation('common');
+  const dragControls = useDragControls();
+  const titleId = useId();
+
+  // Keep a stable ref to onClose so the history effect doesn't re-run on every render
+  const onCloseRef = useRef(onClose);
+  useEffect(() => { onCloseRef.current = onClose; }, [onClose]);
+
+  // Android back-gesture / hardware back button: push a history entry when the
+  // sheet opens so the gesture hits that entry instead of leaving the app.
+  //
+  // The retraction is deliberately narrow. This effect's cleanup runs on ANY
+  // unmount, not just a deliberate close — a parent that switches to an error
+  // branch, a route change, a conditional render — and an unconditional
+  // `history.back()` there walked the browser off the page under the user. On a
+  // phone that reads as the page crashing, which is exactly what was reported
+  // for the grocery list's share sheet. So the entry is tagged, and it is only
+  // retracted while it is still the entry the browser is actually on; anything
+  // else leaves history alone (one stale entry beats teleporting the user).
+  useEffect(() => {
+    if (!isOpen) return undefined;
+
+    // Distinguishes a close triggered by the back gesture (popstate — the entry
+    // is already gone) from a programmatic one (X button / backdrop).
+    let closedByPop = false;
+    const entryId = `sheet_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+
+    try {
+      history.pushState({ bottomSheet: entryId }, '');
+    } catch (_) {
+      // Some in-app browsers rate-limit pushState. The sheet still works; the
+      // back gesture just won't be intercepted.
+      return undefined;
+    }
+
+    const handlePop = () => {
+      closedByPop = true;
+      onCloseRef.current();
+    };
+
+    window.addEventListener('popstate', handlePop);
+
+    return () => {
+      window.removeEventListener('popstate', handlePop);
+      if (closedByPop) return;
+      if (window.history.state?.bottomSheet !== entryId) return;
+      history.back();
+    };
+  }, [isOpen]); // intentionally omit onClose — we use the ref
+
+  const handleBackdropClick = useCallback((e) => {
+    if (e.target === e.currentTarget) onClose();
+  }, [onClose]);
+
+  const heightClass = {
+    auto: 'max-h-[90dvh]',
+    full: 'h-[90dvh]',
+    half: 'h-[50dvh]',
+  }[height] ?? 'max-h-[90dvh]';
+
+  return (
     <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center">
+      {isOpen && (
+        <>
+          {/* Backdrop */}
           <motion.div
+            key="backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={{ duration: 0.15 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/40"
+            transition={{ duration: 0.2 }}
+            onClick={handleBackdropClick}
+            className="fixed inset-0 z-[200] bg-black/60 backdrop-blur-sm"
           />
 
+          {/* Sheet */}
           <motion.div
+            key="sheet"
+            drag="y"
+            dragControls={dragControls}
+            dragListener={false}
+            dragConstraints={{ top: 0 }}
+            dragElastic={0.15}
+            onDragEnd={(_, info) => {
+              if (info.offset.y > 80 || info.velocity.y > 400) onClose();
+            }}
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
             exit={{ y: '100%' }}
-            transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
-            className={cn(
-              'relative w-full max-w-lg rounded-t-3xl bg-white shadow-2xl',
-              'dark:bg-gray-900',
-              'max-h-[88vh] flex flex-col'
-            )}
+            transition={{ type: 'spring', stiffness: 400, damping: 40 }}
             role="dialog"
             aria-modal="true"
-            aria-label={title}
+            aria-labelledby={title ? titleId : undefined}
+            aria-label={title ? undefined : t('dialog', { fallback: 'Dialog' })}
+            className={cn(
+              'fixed bottom-0 left-0 right-0 z-[201]',
+              'bg-white dark:bg-gray-900',
+              'rounded-t-2xl shadow-2xl',
+              'flex flex-col',
+              heightClass,
+              className
+            )}
           >
-            {/* The grab handle is decoration — the sheet is dismissed by the
-                backdrop or the cancel action, not by a drag we'd have to
-                fight the inner scroll for. */}
-            <div className="flex justify-center pt-3 pb-1">
-              <span className="h-1 w-10 rounded-full bg-gray-200 dark:bg-gray-700" />
+            {/* Drag handle area — only this element initiates drag */}
+            <div
+              onPointerDown={(e) => dragControls.start(e)}
+              className="flex-shrink-0 flex flex-col items-center pt-3 pb-1 cursor-grab active:cursor-grabbing"
+              style={{ touchAction: 'none' }}
+            >
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-gray-600" />
             </div>
 
-            {title && (
-              <h2 className="px-5 pb-3 pt-1 text-center text-[15px] font-semibold text-gray-900 dark:text-gray-100">
-                {title}
-              </h2>
-            )}
-
-            <div className="scroll-area flex-1 px-5">{children}</div>
-
-            {footer && (
-              <div className="border-t border-gray-100 px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-4 dark:border-gray-800">
-                {footer}
+            {/* Header row (title + close) */}
+            {(title || true) && (
+              <div className="flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b border-gray-100 dark:border-gray-800">
+                {title ? (
+                  <h2 id={titleId} className="text-base font-semibold text-gray-900 dark:text-white">
+                    {title}
+                  </h2>
+                ) : (
+                  <div />
+                )}
+                <button
+                  onClick={onClose}
+                  className="p-1.5 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                  aria-label={t('close')}
+                >
+                  <X className="w-5 h-5" />
+                </button>
               </div>
             )}
+
+            {/* Scrollable content */}
+            <div className="flex-1 overflow-y-auto overscroll-contain" style={{ touchAction: 'pan-y' }}>
+              {children}
+            </div>
           </motion.div>
-        </div>
+        </>
       )}
-    </AnimatePresence>,
-    document.body
+    </AnimatePresence>
   );
-}
+};
+
+export default BottomSheet;

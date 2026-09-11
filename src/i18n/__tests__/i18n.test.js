@@ -10,22 +10,32 @@ describe('translations', () => {
 
   it('resolves a dotted key', () => {
     const { t } = useLanguage.getState();
-    expect(t('list.addItem')).toBe(he.list.addItem);
+    expect(t('quickAdd.placeholder')).toBe(he.quickAdd.placeholder);
   });
 
   it('interpolates', () => {
     const { t } = useLanguage.getState();
-    expect(t('list.itemsLeft', { count: 3 })).toContain('3');
+    expect(t('progress.remaining', { count: 3 })).toContain('3');
   });
 
   it('switches language', () => {
     useLanguage.getState().setLanguage('en');
-    expect(useLanguage.getState().t('list.addItem')).toBe(en.list.addItem);
+    expect(useLanguage.getState().t('quickAdd.placeholder')).toBe(en.quickAdd.placeholder);
   });
 
   it('returns the key itself when a string is missing, so gaps are visible', () => {
     const { t } = useLanguage.getState();
     expect(t('nope.not.here')).toBe('nope.not.here');
+  });
+
+  it('prefers an explicit fallback over the raw key', () => {
+    // How the ported components render server error codes: most codes have no
+    // string of their own and must land on the generic message, not on
+    // "errors.GROCERY_SOMETHING_UNMAPPED".
+    const { t } = useLanguage.getState();
+    expect(t('errors.NOT_A_REAL_CODE', { fallback: 'בעיה' })).toBe('בעיה');
+    // A key that DOES exist still wins over the fallback.
+    expect(t('quickAdd.add', { fallback: 'nope' })).toBe(he.quickAdd.add);
   });
 
   it('keeps he and en in step', () => {

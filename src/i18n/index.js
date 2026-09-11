@@ -59,11 +59,19 @@ export const useLanguage = create((set, get) => ({
     return get().language === 'he';
   },
 
-  /** t('list.itemsLeft', { count: 3 }) */
+  /**
+   * t('list.itemsLeft', { count: 3 })
+   *
+   * `fallback` is a reserved variable, not an interpolation: the ported
+   * components look up server error codes by name — t(`errors.${code}`, {
+   * fallback: t('errors.generic') }) — and most codes have no string of their
+   * own. Without it every unmapped code would render as the raw key.
+   */
   t: (path, vars) => {
     const { language } = get();
     const hit = lookup(BUNDLES[language], path) ?? lookup(BUNDLES.he, path);
-    return hit === undefined ? path : interpolate(hit, vars);
+    if (hit === undefined) return vars?.fallback ?? path;
+    return interpolate(hit, vars);
   },
 }));
 
@@ -71,3 +79,17 @@ export const useLanguage = create((set, get) => ({
 export const initLanguage = () => applyToDocument(useLanguage.getState().language);
 
 export const useT = () => useLanguage((s) => s.t);
+
+/**
+ * The shape SpendWise's components expect: `const { t } = useTranslation()`.
+ *
+ * Kept deliberately, so the components ported from there need no edit on the
+ * line that reads their strings. The namespace argument is accepted and
+ * ignored — every grocery string is top-level in this app's bundle, because
+ * this app is only the grocery list.
+ */
+export const useTranslation = () => {
+  const t = useLanguage((s) => s.t);
+  const language = useLanguage((s) => s.language);
+  return { t, language, isRTL: language === 'he' };
+};

@@ -1,4 +1,24 @@
+import grocery from './he.grocery';
+
+/**
+ * Hebrew.
+ *
+ * `he.grocery.js` is the list's own vocabulary, carried over from SpendWise
+ * unchanged — it is what the ported components already speak, and rewording it
+ * would only make their strings drift. Kept as its own file so it stays easy
+ * to diff against the original.
+ *
+ * Everything below is new to this app: it has its own front door and its own
+ * settings, neither of which existed when the list lived inside SpendWise.
+ */
 export default {
+  ...grocery,
+
+  // BottomSheet was written against the 'common' namespace and reads these
+  // two unqualified. Kept at the top level so it needs no edit.
+  close: 'סגור',
+  dialog: 'חלון',
+
   app: {
     name: 'רשימת קניות',
     tagline: 'רשימה אחת, לכל הבית',
@@ -13,94 +33,6 @@ export default {
     failed: 'ההתחברות נכשלה. נסה שוב.',
     // Why there is no password field, said once, where it is asked.
     noPassword: 'בלי סיסמאות — כניסה עם Google בלבד',
-  },
-
-  list: {
-    title: 'הרשימה',
-    empty: 'הרשימה ריקה',
-    emptyHint: 'הוסף את הפריט הראשון',
-    toBuy: 'לקנות',
-    inCart: 'בעגלה',
-    itemsLeft: '{{count}} נשארו',
-    allDone: 'הכל בעגלה',
-    addItem: 'הוסף פריט',
-    itemName: 'מה צריך?',
-    quantity: 'כמות',
-    unit: 'יחידה',
-    note: 'הערה',
-    category: 'קטגוריה',
-    save: 'שמור',
-    cancel: 'ביטול',
-    delete: 'מחק',
-    edit: 'עריכה',
-    addedBy: 'הוסיף {{name}}',
-    boughtBy: 'לקח {{name}}',
-    deleteConfirm: 'למחוק את {{name}}?',
-    // Shown when someone else saved the same item first.
-    conflict: 'מישהו עדכן את הפריט הזה. רענן ונסה שוב.',
-  },
-
-  trip: {
-    finish: 'סיום קנייה',
-    finishTitle: 'לסגור את הקנייה?',
-    storeName: 'איפה קנית?',
-    total: 'כמה שילמת?',
-    totalHint: 'אפשר לדלג',
-    confirm: 'סגור קנייה',
-    leftoverNote: '{{count}} פריטים שלא נקנו יעברו לרשימה הבאה',
-    done: 'הקנייה נסגרה',
-    history: 'היסטוריה',
-    historyEmpty: 'עוד לא סגרת קנייה',
-    itemCount: '{{count}} פריטים',
-  },
-
-  members: {
-    title: 'מי ברשימה',
-    invite: 'הזמן',
-    inviteTitle: 'הזמנה לרשימה',
-    inviteEmail: 'כתובת אימייל',
-    inviteSend: 'שלח הזמנה',
-    inviteLink: 'העתק קישור',
-    inviteCopied: 'הקישור הועתק',
-    owner: 'בעלים',
-    member: 'חבר',
-    remove: 'הסר',
-    leave: 'עזוב רשימה',
-    leaveConfirm: 'לעזוב את הרשימה?',
-    pending: 'ממתין',
-    joined: 'הצטרפת לרשימה',
-    inviteInvalid: 'ההזמנה לא תקפה או שפג תוקפה',
-  },
-
-  // Keys match src/lib/categories.js — the value stored in items.category_key.
-  categories: {
-    produce: 'פירות וירקות',
-    bakery: 'מאפים',
-    dairy_eggs: 'חלב וביצים',
-    meat_fish: 'בשר ודגים',
-    pantry: 'מזווה',
-    frozen: 'קפואים',
-    snacks_sweets: 'חטיפים ומתוקים',
-    beverages: 'משקאות',
-    alcohol: 'אלכוהול',
-    baby: 'תינוקות',
-    household: 'בית וניקיון',
-    disposables: 'חד פעמי',
-    personal_care: 'טיפוח',
-    other: 'שונות',
-  },
-
-  // Keys match GROCERY_UNITS in src/lib/categories.js.
-  units: {
-    unit: 'יח׳',
-    kg: 'ק״ג',
-    g: 'גרם',
-    l: 'ליטר',
-    ml: 'מ״ל',
-    pack: 'חבילה',
-    box: 'קופסה',
-    bottle: 'בקבוק',
-    bag: 'שקית',
   },
 
   profile: {
@@ -121,5 +53,8 @@ export default {
     back: 'חזרה',
     close: 'סגור',
     confirm: 'אישור',
+    cancel: 'ביטול',
+    save: 'שמור',
+    delete: 'מחק',
   },
 };

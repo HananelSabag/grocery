@@ -99,3 +99,79 @@ rollback;
 --
 --   begin; set local role anon; select count(*) from grocery.lists; rollback;
 --   → ERROR 42501: permission denied for table lists
+
+
+-- ===========================================================================
+-- Sharing — the full invitation round trip.
+--
+-- Run this against a real pending token (the share sheet mints one). It is the
+-- path an invited person actually takes, and the one place where somebody who
+-- is NOT yet a member has to be allowed through a door.
+--
+-- Last run: every line as expected.
+-- ===========================================================================
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at,
+                        raw_app_meta_data, raw_user_meta_data)
+values ('cccccccc-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000000',
+        'authenticated','authenticated','invitee@test.local','x',now(),now(),now(),
+        '{}','{"full_name":"Invitee"}');
+
+create temp table probe(step text, result text);
+grant select, insert on probe to authenticated;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"cccccccc-0000-0000-0000-000000000003","role":"authenticated","email":"invitee@test.local"}';
+
+do $probe$
+declare v_list bigint; v_count int; v_trip bigint;
+  -- Replace with a live pending token and its list id.
+  c_token constant uuid   := '00000000-0000-0000-0000-000000000000';
+  c_list  constant bigint := 0;
+begin
+  select count(*) into v_count from grocery.lists where id = c_list;
+  insert into probe values ('1. sees list before accepting', v_count || ' rows');   -- expect 0
+
+  begin
+    v_list := grocery.accept_invitation(c_token);
+    insert into probe values ('2. accept_invitation', 'joined list ' || v_list);
+  exception when others then
+    insert into probe values ('2. accept_invitation', 'FAILED ' || sqlstate || ' ' || sqlerrm);
+    return;
+  end;
+
+  select count(*) into v_count from grocery.lists where id = c_list;
+  insert into probe values ('3. sees list after', v_count || ' rows');              -- expect 1
+
+  select count(*) into v_count from grocery.items;
+  insert into probe values ('4. sees items after', v_count || ' rows');             -- expect >0
+
+  select id into v_trip from grocery.trips where list_id = c_list and status = 'active';
+  insert into grocery.items (trip_id, name) values (v_trip, 'added by member');
+  insert into probe values ('5. member can add an item', 'yes');                    -- expect yes
+
+  -- A member is not an owner, and the difference has to be real rather than a
+  -- matter of which buttons the client chose to render.
+  update grocery.lists set name = 'MEMBER RENAMED' where id = c_list;
+  get diagnostics v_count = ROW_COUNT;
+  insert into probe values ('6. member renames list', v_count || ' rows changed');  -- expect 0
+
+  delete from grocery.list_members where user_id <> 'cccccccc-0000-0000-0000-000000000003';
+  get diagnostics v_count = ROW_COUNT;
+  insert into probe values ('7. member evicts the owner', v_count || ' deleted');   -- expect 0
+
+  -- A token is spent once. Otherwise a forwarded link keeps letting people in.
+  begin
+    perform grocery.accept_invitation(c_token);
+    insert into probe values ('8. reuse the same token', 'ALLOWED -- LEAK');
+  exception when others then
+    insert into probe values ('8. reuse the same token', 'blocked');                -- expect blocked
+  end;
+end
+$probe$;
+
+select * from probe order by step;
+rollback;

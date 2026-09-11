@@ -10,6 +10,8 @@ the rest watch things get ticked off from home.
 
 Mobile-first PWA · Hebrew & English (RTL/LTR) · Google sign-in · no backend
 
+**[grocery-red-tau.vercel.app](https://grocery-red-tau.vercel.app)**
+
 </div>
 
 ---

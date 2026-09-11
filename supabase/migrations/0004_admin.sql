@@ -181,3 +181,37 @@ $fn$;
 grant execute on function grocery.admin_overview() to authenticated;
 grant execute on function grocery.admin_users()    to authenticated;
 grant execute on function grocery.admin_lists()    to authenticated;
+
+-- ── Close the default EXECUTE grant ────────────────────────────────────────
+--
+-- Postgres grants EXECUTE on a new function to PUBLIC automatically, and the
+-- grants above only added on top of that — they never took the default away.
+-- So every function here was reachable from /rest/v1/rpc/… with the anon key,
+-- including the internal helpers that were never meant to be an API.
+--
+-- Nothing leaked: each either needs auth.uid() (null for anon) or re-checks
+-- is_admin(). But `trip_list_id` would have told an anonymous caller which
+-- list any trip id belongs to, and a helper being callable at all is surface
+-- that exists for no reason.
+
+revoke execute on all functions in schema grocery from public, anon;
+
+-- Called from inside policy expressions, which are evaluated as the querying
+-- role — so `authenticated` genuinely needs EXECUTE even though no client
+-- calls these directly.
+grant execute on function grocery.is_member(bigint)    to authenticated;
+grant execute on function grocery.is_owner(bigint)     to authenticated;
+grant execute on function grocery.trip_list_id(bigint) to authenticated;
+grant execute on function grocery.is_admin()           to authenticated;
+
+grant execute on function grocery.ensure_list()                         to authenticated;
+grant execute on function grocery.accept_invitation(uuid)               to authenticated;
+grant execute on function grocery.finish_trip(bigint, varchar, numeric) to authenticated;
+
+grant execute on function grocery.admin_overview() to authenticated;
+grant execute on function grocery.admin_users()    to authenticated;
+grant execute on function grocery.admin_lists()    to authenticated;
+
+-- handle_new_user and touch_updated_at are deliberately left with no grant at
+-- all: they are trigger functions, fired in the table owner's context, and have
+-- no business being reachable over HTTP.

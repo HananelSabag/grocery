@@ -175,3 +175,100 @@ $probe$;
 
 select * from probe order by step;
 rollback;
+
+
+-- ===========================================================================
+-- Admin.
+--
+-- Admin is a wider SELECT granted in policy, not a service key — so it is
+-- testable the same way everything else is, by acting as somebody and seeing
+-- what they get. The half that matters is the second block: the functions are
+-- SECURITY DEFINER, which means RLS is NOT checking for them, so if their own
+-- is_admin() guard ever went missing the function itself would be the leak.
+--
+-- Last run: admin sees everything, stranger blocked 42501 on both, and reads
+-- back zero rows rather than a forbidden error.
+-- ===========================================================================
+
+begin;
+create temp table probe(who text, call text, result text);
+grant select, insert on probe to authenticated;
+
+set local role authenticated;
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000000","role":"authenticated","email":"hananel12345@gmail.com"}';
+
+do $p$
+declare r record; n int;
+begin
+  insert into probe values ('admin', 'is_admin()', grocery.is_admin()::text);      -- expect true
+  select * into r from grocery.admin_overview();
+  insert into probe values ('admin', 'admin_overview',
+    format('users=%s lists=%s shared=%s', r.users, r.lists, r.shared_lists));
+  select count(*) into n from grocery.admin_users();
+  insert into probe values ('admin', 'admin_users', n || ' rows');
+  select count(*) into n from grocery.admin_lists();
+  insert into probe values ('admin', 'admin_lists', n || ' rows');
+  select count(*) into n from grocery.profiles;
+  insert into probe values ('admin', 'sees all profiles', n || ' rows');
+end $p$;
+
+set local request.jwt.claims = '{"sub":"cccccccc-0000-0000-0000-000000000003","role":"authenticated","email":"nobody@test.local"}';
+
+do $p$
+declare n int;
+begin
+  insert into probe values ('stranger', 'is_admin()', grocery.is_admin()::text);   -- expect false
+  begin
+    perform grocery.admin_overview();
+    insert into probe values ('stranger', 'admin_overview', 'ALLOWED -- LEAK');
+  exception when others then
+    insert into probe values ('stranger', 'admin_overview', 'blocked ' || sqlstate);
+  end;
+  begin
+    perform grocery.admin_users();
+    insert into probe values ('stranger', 'admin_users', 'ALLOWED -- LEAK');
+  exception when others then
+    insert into probe values ('stranger', 'admin_users', 'blocked ' || sqlstate);
+  end;
+  -- Not an error, just nothing: a stranger is not told that other households
+  -- or an admin list exist.
+  select count(*) into n from grocery.profiles;
+  insert into probe values ('stranger', 'profiles visible', n || ' rows');         -- expect 0
+  select count(*) into n from grocery.admins;
+  insert into probe values ('stranger', 'admins table visible', n || ' rows');     -- expect 0
+end $p$;
+
+select * from probe;
+rollback;
+
+
+-- ===========================================================================
+-- Separation from SpendWise.
+--
+-- The schema shares a Postgres instance with SpendWise only because of the
+-- free-tier project limit. Nothing may depend on that: both counts must be 0,
+-- which is what lets this schema be dumped and moved to its own project
+-- without touching a single reference.
+-- ===========================================================================
+
+with fks as (
+  select src_ns.nspname as from_schema, tgt_ns.nspname as to_schema
+  from pg_constraint con
+  join pg_class src        on src.oid = con.conrelid
+  join pg_namespace src_ns on src_ns.oid = src.relnamespace
+  join pg_class tgt        on tgt.oid = con.confrelid
+  join pg_namespace tgt_ns on tgt_ns.oid = tgt.relnamespace
+  where con.contype = 'f'
+)
+select 'grocery -> public' as direction, count(*) as crossings from fks
+  where from_schema = 'grocery' and to_schema = 'public'
+union all
+select 'public -> grocery', count(*) from fks
+  where from_schema = 'public' and to_schema = 'grocery';
+-- expected: 0, 0
+
+-- And no function body reaching across either:
+select p.proname
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'grocery' and p.prosrc ~* '\mpublic\.';
+-- expected: no rows

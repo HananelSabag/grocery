@@ -8,6 +8,7 @@ import Splash from './components/Splash';
 const ListPage    = lazy(() => import('./pages/ListPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const InvitePage  = lazy(() => import('./pages/InvitePage'));
+const AdminPage   = lazy(() => import('./pages/AdminPage'));
 
 /**
  * Everything behind sign-in, which is everything except the invite link.
@@ -29,6 +30,12 @@ export default function App() {
       <Routes>
         <Route path="/" element={<Protected><ListPage /></Protected>} />
         <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />
+
+        {/* Signed-in only, like everything else. Being an admin is not checked
+            here — the screen's own queries are SECURITY DEFINER functions that
+            refuse anyone who is not one, so a typed URL gets a refusal screen
+            rather than data. */}
+        <Route path="/admin" element={<Protected><AdminPage /></Protected>} />
 
         {/* The one route that may be opened by someone who has never been
             here: it signs them in first, then redeems the token. */}

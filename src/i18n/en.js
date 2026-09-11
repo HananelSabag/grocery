@@ -54,6 +54,26 @@ export default {
     statItems: 'Items you got',
   },
 
+  /** Admin. Reachable only by an address in grocery.admins. */
+  admin: {
+    title: 'Admin',
+    denied: "You don't have access to this screen.",
+    users: 'Users',
+    lists: 'Lists',
+    sharedLists: 'Shared lists',
+    activeItems: 'Open items',
+    trips: 'Shops closed',
+    pendingInvites: 'Pending invites',
+    signups7d: 'Signed up this week',
+    active7d: 'Active this week',
+    archived: 'archived',
+    empty: 'Nothing here yet',
+    userLine: '{{lists}} lists · {{items}} items · {{trips}} shops',
+    listLine: '{{members}} members · {{items}} items · {{trips}} shops',
+    readOnlyNote: 'This screen is read-only. The grant is made in RLS and widens what can be seen, not what can be changed.',
+    open: 'Admin panel',
+  },
+
   common: {
     loading: 'Loading…',
     retry: 'Try again',

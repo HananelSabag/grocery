@@ -272,3 +272,21 @@ select p.proname
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'grocery' and p.prosrc ~* '\mpublic\.';
 -- expected: no rows
+
+
+-- ===========================================================================
+-- Function grants.
+--
+-- Postgres grants EXECUTE to PUBLIC by default, so "granted to authenticated"
+-- never implies "not granted to anon" — it has to be revoked and then checked.
+--
+-- Expected: anon '-' on every row; authenticated 'YES' except the two trigger
+-- functions, which should be reachable by nobody over HTTP.
+-- ===========================================================================
+
+select p.proname,
+       case when has_function_privilege('anon',          p.oid, 'EXECUTE') then 'YES' else '-' end as anon,
+       case when has_function_privilege('authenticated', p.oid, 'EXECUTE') then 'YES' else '-' end as authed
+from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+where n.nspname = 'grocery'
+order by p.proname;

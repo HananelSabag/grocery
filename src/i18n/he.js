@@ -70,6 +70,26 @@ export default {
     statItems: 'פריטים שלקחת',
   },
 
+  /** Admin. Reachable only by an address in grocery.admins. */
+  admin: {
+    title: 'ניהול',
+    denied: 'אין לך גישה למסך הזה.',
+    users: 'משתמשים',
+    lists: 'רשימות',
+    sharedLists: 'רשימות משותפות',
+    activeItems: 'פריטים פתוחים',
+    trips: 'קניות שנסגרו',
+    pendingInvites: 'הזמנות ממתינות',
+    signups7d: 'נרשמו השבוע',
+    active7d: 'פעילים השבוע',
+    archived: 'בארכיון',
+    empty: 'אין עדיין נתונים',
+    userLine: '{{lists}} רשימות · {{items}} פריטים · {{trips}} קניות',
+    listLine: '{{members}} חברים · {{items}} פריטים · {{trips}} קניות',
+    readOnlyNote: 'המסך הזה לקריאה בלבד. ההרשאה ניתנת ב-RLS ומאפשרת לראות, לא לשנות.',
+    open: 'מסך ניהול',
+  },
+
   common: {
     loading: 'טוען…',
     retry: 'נסה שוב',

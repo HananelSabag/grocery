@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowLeft, LogOut, ShoppingBag, PackageCheck, Users, Check } from 'lucide-react';
+import { ArrowRight, ArrowLeft, LogOut, ShoppingBag, PackageCheck, Users, Check, Shield } from 'lucide-react';
 
 import { useProfile } from '../stores/auth';
 import { useTheme } from '../stores/theme';
@@ -10,8 +10,10 @@ import { signOut } from '../lib/supabase';
 import { useGroceryList } from '../hooks/useGroceryList';
 import { useHouseholdStats } from '../hooks/useHouseholdStats';
 import { useRenameList } from '../hooks/useSharing';
+import { useIsAdmin } from '../hooks/useAdmin';
 import { cn } from '../lib/helpers';
 import GroceryShareSheet from '../components/GroceryShareSheet';
+import Logo from '../components/Logo';
 
 /**
  * Settings, and the way out.
@@ -51,6 +53,7 @@ export default function ProfilePage() {
   const { list, members, role } = useGroceryList();
   const { data: stats } = useHouseholdStats(list?.id);
   const renameList = useRenameList();
+  const isAdmin = useIsAdmin();
 
   const [name, setName] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -199,10 +202,23 @@ export default function ProfilePage() {
         </Section>
       )}
 
+      {/* Only shown to an admin — but showing it is all this does. Every query
+          behind it re-checks in the database. */}
+      {isAdmin && (
+        <Link
+          to="/admin"
+          className="glass mt-5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl
+                     font-bold text-brand-600 transition-transform active:scale-[0.99] dark:text-brand-400"
+        >
+          <Shield className="h-4 w-4" />
+          {t('admin.open')}
+        </Link>
+      )}
+
       <button
         type="button"
         onClick={() => signOut()}
-        className="glass mt-5 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl
+        className="glass mt-3 flex min-h-[44px] w-full items-center justify-center gap-2 rounded-2xl
                    font-bold text-red-600 transition-transform active:scale-[0.99] dark:text-red-400"
       >
         <LogOut className="h-4 w-4 rtl:-scale-x-100" />
@@ -211,7 +227,7 @@ export default function ProfilePage() {
 
       {/* The mark, once, at the bottom — where an app signs its name. */}
       <div className="mt-8 flex flex-col items-center gap-2 opacity-50">
-        <img src="/favicon.svg" alt="" width="32" height="32" className="h-8 w-8 rounded-lg" />
+        <Logo size={32} />
         <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500">
           {t('app.name')} · {t('app.tagline')}
         </p>

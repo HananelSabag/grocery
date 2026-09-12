@@ -4,6 +4,7 @@ import { Navigate, Route, Routes } from 'react-router-dom';
 import { useAuth } from './stores/auth';
 import SignIn from './pages/SignIn';
 import Splash from './components/Splash';
+import InstallPrompt from './components/InstallPrompt';
 
 const ListPage    = lazy(() => import('./pages/ListPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -27,6 +28,9 @@ const Protected = ({ children }) => {
 export default function App() {
   return (
     <Suspense fallback={<Splash />}>
+      {/* Offered from anywhere, shown once, never over the first screen. */}
+      <InstallPrompt />
+
       <Routes>
         <Route path="/" element={<Protected><ListPage /></Protected>} />
         <Route path="/profile" element={<Protected><ProfilePage /></Protected>} />

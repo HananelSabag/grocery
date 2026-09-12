@@ -69,7 +69,18 @@ export const useLanguage = create((set, get) => ({
    */
   t: (path, vars) => {
     const { language } = get();
-    const hit = lookup(BUNDLES[language], path) ?? lookup(BUNDLES.he, path);
+
+    // Hebrew and English both read badly at one: "נשארו 1" and "1 items left".
+    // A `_one` sibling is used when count is exactly 1, which is the only
+    // distinction either language needs here.
+    const candidates = vars?.count === 1 ? [`${path}_one`, path] : [path];
+
+    let hit;
+    for (const key of candidates) {
+      hit = lookup(BUNDLES[language], key) ?? lookup(BUNDLES.he, key);
+      if (hit !== undefined) break;
+    }
+
     if (hit === undefined) return vars?.fallback ?? path;
     return interpolate(hit, vars);
   },

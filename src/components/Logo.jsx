@@ -4,14 +4,15 @@ import { cn } from '../lib/helpers';
 /**
  * The mark.
  *
- * Mirrored in Hebrew. The cart is drawn facing the way a cart faces when you
- * read left-to-right — handle behind, basket ahead — and in an RTL layout that
- * reads as pointing backwards, the same way every directional glyph in the app
- * is flipped. The art is not re-cut; `-scale-x-100` does it, which also means
- * the one file stays correct in both directions.
+ * The artwork itself faces the way a cart faces in an RTL layout — handle on
+ * the right, basket ahead to the left — because that is the orientation the
+ * app is almost always seen in, and because the home-screen icon and the
+ * browser tab are raster files that no CSS rule reaches. Making Hebrew the
+ * drawn default is what gets those right.
  *
- * Kept as a component so that rule lives in one place rather than being
- * remembered at each of the three spots the mark appears.
+ * So the flip here is the English one: `ltr:-scale-x-100`, the mirror of what
+ * this used to be. Same single file, still correct in both directions, but now
+ * the un-transformed case is the common one.
  */
 export default function Logo({ size = 36, className }) {
   return (
@@ -20,7 +21,7 @@ export default function Logo({ size = 36, className }) {
       alt=""
       width={size}
       height={size}
-      className={cn('shrink-0 rtl:-scale-x-100', className)}
+      className={cn('shrink-0 ltr:-scale-x-100', className)}
       style={{ width: size, height: size }}
     />
   );

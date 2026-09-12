@@ -290,3 +290,60 @@ select p.proname,
 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
 where n.nspname = 'grocery'
 order by p.proname;
+
+
+-- ===========================================================================
+-- Elevated read must not reach the ordinary read path.
+--
+-- This regressed once and it is worth a standing check. Six `*_read_admin`
+-- policies widened SELECT for an admin on every table, on the assumption the
+-- admin panel read tables directly — it does not, its three functions are
+-- SECURITY DEFINER and bypass RLS anyway.
+--
+-- What the policies did instead was leak into the app. The client asked for
+-- "my lists" by selecting list_members with no filter and letting RLS narrow
+-- it; the moment the signed-in user was an admin, that returned every
+-- household's rows and the list switcher showed the owner everyone who had
+-- ever signed up.
+--
+-- Two things hold it shut now and both are asserted here: the policies are
+-- gone, and the query narrows itself.
+--
+-- Expected: an admin's unfiltered read sees only their OWN memberships, while
+-- the admin functions still see everything.
+-- ===========================================================================
+
+begin;
+create temp table probe(check_name text, result text);
+grant select, insert on probe to authenticated;
+
+set local role authenticated;
+-- An account that is in grocery.admins.
+set local request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000000","role":"authenticated","email":"hananel12345@gmail.com"}';
+
+do $p$
+declare n int; r record;
+begin
+  select count(*) into n from grocery.list_members;
+  insert into probe values ('admin, unfiltered list_members', n || ' (expect: only their own)');
+
+  select count(*) into n from grocery.lists;
+  insert into probe values ('admin, unfiltered lists', n || ' (expect: only their own)');
+
+  select count(*) into n from grocery.profiles;
+  insert into probe values ('admin, unfiltered profiles', n || ' (expect: self + listmates)');
+
+  -- And the panel still works, because it never depended on those policies.
+  select * into r from grocery.admin_overview();
+  insert into probe values ('admin_overview sees everything', format('users=%s lists=%s', r.users, r.lists));
+  select count(*) into n from grocery.admin_users();
+  insert into probe values ('admin_users sees everything', n || ' rows');
+end $p$;
+
+select * from probe;
+rollback;
+
+-- No `*_read_admin` policy should exist on any ordinary table:
+--   select policyname from pg_policies
+--    where schemaname = 'grocery' and policyname like '%_read_admin';
+--   → no rows

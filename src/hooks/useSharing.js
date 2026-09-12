@@ -20,6 +20,7 @@ import { useTranslation } from '../i18n';
 /** Invitations addressed to me, waiting to be answered. */
 export function useMyGroceryInvitations() {
   const user = useAuth((s) => s.user);
+  const userId = user?.id;
   const email = user?.email;
 
   const query = useQuery({
@@ -33,17 +34,20 @@ export function useMyGroceryInvitations() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('invitations')
-        .select('id, token, list_id, created_at, expires_at, lists:list_id ( name ), profiles:inviter_id ( display_name, avatar_url, custom_avatar_url )')
+        .select('id, token, list_id, inviter_id, created_at, expires_at, lists:list_id ( name ), profiles:inviter_id ( display_name, avatar_url, custom_avatar_url )')
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
 
       if (error) throw error;
 
-      // The policy already limits this to invitations naming my address, but
-      // a link invitation (no email) is visible to the owner too — and their
-      // own link is not an invitation *to* them.
-      return (data ?? []).map((row) => ({
+      // The policy also returns the owner's own outgoing link invitations,
+      // because they are allowed to manage them — but a link you created is
+      // not an invitation *to* you, and showing it as one puts a "somebody
+      // invited you" banner on your own screen.
+      return (data ?? [])
+        .filter((row) => row.inviter_id !== userId)
+        .map((row) => ({
         ...row,
         list_name: row.lists?.name ?? null,
         inviter_name: row.profiles?.display_name ?? null,
@@ -80,6 +84,11 @@ export function useGroceryLists() {
       // and the component reads `isOwn`, `ownerName`, `openItems` and
       // `memberCount` — every one of them undefined, which is why every row
       // read "הרשימה של undefined" and claimed to be empty.
+      // `.eq('user_id')` is the point of this query, not a belt-and-braces
+      // extra. Without it this asked for every membership row in the database
+      // and left RLS to narrow the answer — which it did, until an admin read
+      // policy widened SELECT and the switcher started showing the owner every
+      // household that had ever signed up. A query for "my lists" says so.
       const { data, error } = await supabase
         .from('list_members')
         .select(`role, joined_at,
@@ -89,6 +98,7 @@ export function useGroceryLists() {
                    members:list_members ( id ),
                    trips ( id, status, items ( id, is_purchased ) )
                  )`)
+        .eq('user_id', userId)
         .order('joined_at', { ascending: true });
 
       if (error) throw error;

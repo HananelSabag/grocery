@@ -87,6 +87,12 @@ export default {
     iosStep2: 'Add to Home Screen',
   },
 
+  /** Shown only when a new build could not install itself quietly. */
+  update: {
+    ready: 'New version',
+    action: 'Refresh',
+  },
+
   common: {
     loading: 'Loading…',
     retry: 'Try again',

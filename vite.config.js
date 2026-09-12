@@ -59,6 +59,20 @@ export default defineConfig({
         // items always come from Supabase (or react-query's memory cache).
         navigateFallbackDenylist: [/^\/auth\//],
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
+
+        // A new worker takes over on its own rather than sitting in `waiting`
+        // for permission. Without this, a worker can only be promoted by a
+        // page that knows to promote it — so the one deploy that introduces
+        // that ability strands everybody who has not got it yet: their app
+        // keeps serving the old shell no matter how many times they refresh,
+        // until they fully close it. Observed live, which is why this is here.
+        //
+        // The cost is a few seconds where the page is running the old code
+        // against the new cache, and lib/pwa.js closes that: it reloads as
+        // soon as the swap is safe, and recovers a chunk that went missing in
+        // between.
+        skipWaiting: true,
+        clientsClaim: true,
       },
     }),
   ],

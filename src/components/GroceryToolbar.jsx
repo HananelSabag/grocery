@@ -1,6 +1,6 @@
 import React from 'react';
 import { ChevronDown, History, User, Users } from 'lucide-react';
-import { cn } from '../lib/helpers';
+import { cn, avatarInitial } from '../lib/helpers';
 import Logo from './Logo';
 
 /**
@@ -21,6 +21,8 @@ export default function GroceryToolbar({
   onShare,
   onHistory,
   onProfile,
+  profilePicture,
+  profileName,
   invitationCount = 0,
   statusLine,
   progress,
@@ -99,10 +101,32 @@ export default function GroceryToolbar({
         </button>
 
         {/* Standalone, this app has no surrounding shell to hang settings off,
-            so the way out of the list lives here with the other two. */}
+            so the way out of the list lives here with the other two — wearing
+            your own face rather than a generic person glyph, which is both
+            nicer and says at a glance which account is signed in. The glyph
+            is still the fallback for an account with no picture at all. */}
         {onProfile && (
-          <button type="button" onClick={onProfile} aria-label={t('profile.title')} className={iconButton}>
-            <User className="h-4 w-4" />
+          <button
+            type="button"
+            onClick={onProfile}
+            aria-label={t('profile.title')}
+            className={cn(iconButton, profilePicture && 'overflow-hidden p-0')}
+          >
+            {profilePicture ? (
+              <img
+                src={profilePicture}
+                alt=""
+                referrerPolicy="no-referrer"
+                className="h-full w-full object-cover"
+              />
+            ) : profileName ? (
+              <span className="gradient-action flex h-full w-full items-center justify-center
+                               rounded-xl text-[13px] font-bold text-white">
+                {avatarInitial(profileName)}
+              </span>
+            ) : (
+              <User className="h-4 w-4" />
+            )}
           </button>
         )}
       </div>

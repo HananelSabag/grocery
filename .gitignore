@@ -24,3 +24,6 @@ npm-debug.log*
 
 .vercel
 .env*
+
+# Logo working files. The ones the app ships live in public/.
+/*.png

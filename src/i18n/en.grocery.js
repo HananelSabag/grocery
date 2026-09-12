@@ -185,6 +185,10 @@ export default {
     openItems: "{{count}} to buy",
     members: "{{count}} people",
     switched: "Switched list",
+    defaultName: "Grocery list",
+    someone: "someone",
+    nickname: "List nickname",
+    nicknameHint: "Only to tell lists apart. Leaving it empty is fine.",
   },
 
   share: {

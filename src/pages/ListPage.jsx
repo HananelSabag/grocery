@@ -97,9 +97,17 @@ export default function ListPage() {
     setSearchParams(params, { replace: true });
   }, [searchParams, setSearchParams]);
 
-  /** One way to add an item, so this puts the cursor in it. */
+  /**
+   * One way to add an item, so this puts the cursor in it.
+   *
+   * Both composers are mounted; only one is visible. This used to prefer the
+   * desktop ref, which on a phone is present but `display:none` — so the tap
+   * focused nothing and the empty list's only call to action did nothing at
+   * all. Each handle now says whether it took focus.
+   */
   const focusQuickAdd = useCallback(() => {
-    (desktopQuickAddRef.current || quickAddRef.current)?.focus();
+    if (quickAddRef.current?.focus()) return;
+    desktopQuickAddRef.current?.focus();
   }, []);
 
   /** Quick-add hands the editor what it already had, rather than a blank form. */

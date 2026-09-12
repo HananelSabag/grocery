@@ -48,7 +48,9 @@ export default function GroceryToolbar({
         <Logo size={36} />
 
         <div className="min-w-0 flex-1">
-          {/* The list's name is only worth a line when there is more than one. */}
+          {/* The name always shows. It used to appear only when there was more
+              than one list to switch between, which left a lone small status
+              line floating next to the mark and reading as an empty header. */}
           {onSwitchList ? (
             <button
               type="button"
@@ -56,18 +58,22 @@ export default function GroceryToolbar({
               aria-label={`${t('lists.switchTo')}: ${activeListLabel}`}
               className="flex max-w-full items-center gap-1 rounded-lg text-start focus-visible:outline focus-visible:outline-2 focus-visible:outline-brand-500"
             >
-              <span className="truncate text-sm font-bold text-gray-800 dark:text-gray-100">
+              <span className="truncate text-[15px] font-bold leading-tight text-gray-900 dark:text-gray-50">
                 {activeListLabel}
               </span>
               <ChevronDown className="h-3.5 w-3.5 shrink-0 text-gray-400" />
             </button>
-          ) : null}
+          ) : (
+            <p className="truncate text-[15px] font-bold leading-tight text-gray-900 dark:text-gray-50">
+              {activeListLabel}
+            </p>
+          )}
 
+          {/* One line, always. `truncate` rather than a wrap: a header that
+              grows a second line pushes the list down by a row every time the
+              count crosses ten. */}
           <p
-            className={cn(
-              'truncate text-xs leading-5 text-gray-500 dark:text-gray-400',
-              !onSwitchList && 'text-sm font-semibold text-gray-700 dark:text-gray-200'
-            )}
+            className="truncate text-[12px] leading-tight text-gray-500 dark:text-gray-400"
             role="status"
           >
             {statusLine}

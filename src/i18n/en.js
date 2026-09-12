@@ -77,6 +77,16 @@ export default {
     open: 'Admin panel',
   },
 
+  /** Offer to install. Android gets a real button; iOS gets the gesture. */
+  install: {
+    title: 'Add to your home screen?',
+    body: 'Opens like an app, without the address bar.',
+    action: 'Install',
+    iosBody: 'In Safari this is done from the share menu:',
+    iosStep1: 'Share',
+    iosStep2: 'Add to Home Screen',
+  },
+
   common: {
     loading: 'Loading…',
     retry: 'Try again',

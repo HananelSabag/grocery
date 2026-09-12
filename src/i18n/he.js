@@ -93,6 +93,16 @@ export default {
     open: 'מסך ניהול',
   },
 
+  /** Offer to install. Android gets a real button; iOS gets the gesture. */
+  install: {
+    title: 'להוסיף למסך הבית?',
+    body: 'ייפתח כמו אפליקציה, בלי שורת הכתובת.',
+    action: 'התקנה',
+    iosBody: 'בספארי זה נעשה מתפריט השיתוף:',
+    iosStep1: 'שיתוף',
+    iosStep2: 'הוספה למסך הבית',
+  },
+
   common: {
     loading: 'טוען…',
     retry: 'נסה שוב',

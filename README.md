@@ -102,6 +102,37 @@ Re-run it after touching a policy. It wraps everything in a rollback.
 - **Language defaults to Hebrew unconditionally,** not from
   `navigator.language`: phones here are routinely set to English while the
   people holding them want Hebrew.
+- **The screen's state is two queries, and the split is load-bearing.** The
+  context (list, trip, members) is cached for minutes; the items are not.
+  Putting an item back under the context key would make every tick refetch the
+  members and re-run `ensure_list`.
+- **A query for "mine" narrows itself.** RLS is the security boundary, never a
+  query's only filter — the day a policy widens, every unfiltered query becomes
+  a leak. This has happened here once.
+
+## How a deploy reaches a phone
+
+The service worker answers from its own cache, so nothing about a deploy is
+automatic by default — that is the whole reason `src/lib/pwa.js` exists.
+
+- The worker **activates itself** (`skipWaiting` + `clientsClaim`). It must:
+  a worker that waits can only be promoted by a page that knows how to promote
+  it, which strands every client still on the previous build.
+- The page **asks for a new build every 60 seconds** while it is on screen, and
+  again whenever it comes back — the browser's own schedule is measured in
+  hours.
+- When one arrives the page **replaces itself**, quietly, unless somebody has a
+  caret in a field or a sheet open; then it offers a pill and keeps trying
+  behind it. Measured on production: an open tab moved to a new build on its
+  own in 70 seconds.
+- **`vite:preloadError` reloads once per tab.** A deploy renames every chunk,
+  so a lazy route that was not already loaded 404s on the build being replaced.
+- The **build id is printed at the bottom of the profile screen**, which is how
+  you answer "did my fix reach your phone?".
+
+Vendor code is split from app code so a normal deploy costs the ~95 kB app
+chunk rather than the whole 600 kB bundle; `vercel.json` marks the hashed
+assets immutable and leaves `sw.js` and the HTML revalidating.
 
 ## Running it
 

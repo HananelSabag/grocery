@@ -164,7 +164,8 @@ export function useGrocerySharing() {
    */
   const forgetCurrentList = useCallback(() => {
     setActiveList(null);
-    queryClient.removeQueries({ queryKey: ['list'] });
+    queryClient.removeQueries({ queryKey: groceryKeys.allContexts });
+    queryClient.removeQueries({ queryKey: groceryKeys.allItems });
     queryClient.removeQueries({ queryKey: ['grocery', 'history', userId] });
   }, [queryClient, setActiveList, userId]);
 
@@ -210,6 +211,7 @@ export function useGrocerySharing() {
     onSuccess: invalidate,
   });
 
+  /** `memberId` is the list_members row id, not the user's. */
   const removeMemberMutation = useMutation({
     mutationFn: async (memberId) => {
       const { error } = await supabase.from('list_members').delete().eq('id', memberId);
@@ -218,9 +220,17 @@ export function useGrocerySharing() {
     onSuccess: invalidate,
   });
 
+  /**
+   * Leave one list. The `list_id` is not optional: without it this deleted
+   * every membership row belonging to the user — including the owner row of
+   * their own list, which would have locked them out of it for good, since
+   * reading a list requires being on it.
+   */
   const leaveMutation = useMutation({
-    mutationFn: async () => {
-      const { error } = await supabase.from('list_members').delete().eq('user_id', userId);
+    mutationFn: async (listId) => {
+      if (!listId) throw { error: { code: 'GROCERY_LEAVE_FAILED' } };
+      const { error } = await supabase
+        .from('list_members').delete().eq('user_id', userId).eq('list_id', listId);
       if (error) throw { error: { code: 'GROCERY_LEAVE_FAILED' } };
     },
     onSuccess: () => { forgetCurrentList(); invalidate(); },
@@ -252,7 +262,7 @@ export function useGrocerySharing() {
     respond: (token, action) => run(respondMutation, { token, action }),
     cancelInvite: (email) => run(cancelInviteMutation, email),
     removeMember: (memberId) => run(removeMemberMutation, memberId),
-    leaveList: () => run(leaveMutation),
+    leaveList: (listId) => run(leaveMutation, listId),
     disband: (listId) => run(disbandMutation, listId),
 
     isInviting: inviteMutation.isPending,
@@ -285,5 +295,63 @@ export function useRenameList() {
       queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts });
       queryClient.invalidateQueries({ queryKey: ['grocery', 'lists'] });
     },
+  });
+}
+
+/* ── Joining by code ───────────────────────────────────────────────────────
+ *
+ * The list carries a standing code rather than handing out one-time links.
+ * See supabase/migrations/0008_join_code.sql for why; the short version is
+ * that a link which is spent the first time it works cannot be sent to a
+ * family chat, and nobody could answer how long one lasted or how to change
+ * it.
+ */
+
+/**
+ * Turn a code into enough to recognise the household before joining it.
+ * Returns null when there is no such list.
+ *
+ * A signed-out caller cannot reach this at all: the function is not granted
+ * to `anon`, so it fails at the database rather than in a check here.
+ */
+export const lookupListByCode = async (code) => {
+  const { data, error } = await supabase.rpc('lookup_list_by_code', { p_code: code });
+  if (error) throw error;
+  const row = Array.isArray(data) ? data[0] : data;
+  return row ?? null;
+};
+
+/** Join, and land on the list you just joined rather than on your own. */
+export function useJoinList() {
+  const queryClient = useQueryClient();
+  const setActiveList = useActiveList((s) => s.setListId);
+
+  return useMutation({
+    mutationFn: async (code) => {
+      const { data, error } = await supabase.rpc('join_by_code', { p_code: code });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (listId) => {
+      // Without this the next read calls ensure_list, which answers with the
+      // list you joined *first* — your own — and the list you were invited to
+      // never appears. This is what made sharing look broken.
+      if (listId) setActiveList(listId);
+      queryClient.invalidateQueries();
+    },
+  });
+}
+
+/** Replace the code. The only revocation there is, and owner-only. */
+export function useRotateJoinCode() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (listId) => {
+      const { data, error } = await supabase.rpc('rotate_join_code', { p_list_id: listId });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts }),
   });
 }

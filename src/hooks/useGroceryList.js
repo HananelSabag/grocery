@@ -82,7 +82,9 @@ export function useGroceryList() {
       }
 
       const [listResult, tripResult, membersResult] = await Promise.all([
-        supabase.from('lists').select('id, name, owner_id').eq('id', listId).single(),
+        // join_code comes along because the share sheet needs it the instant it
+        // opens, and it is one column on a row already being fetched.
+        supabase.from('lists').select('id, name, owner_id, join_code').eq('id', listId).single(),
         supabase.from('trips').select('id, list_id, status, created_at')
           .eq('list_id', listId).eq('status', 'active').single(),
         supabase.from('list_members')
@@ -387,7 +389,24 @@ export function useGroceryList() {
   // ── Derived view ──────────────────────────────────────────────────────────
 
   const { sections, purchased, pendingCount, purchasedCount, progress } = useMemo(() => {
-    const items = itemsQuery.data ?? [];
+    // The row shows "so-and-so is editing this" off `editing_by_name`, and
+    // nothing ever set it, so the claim has been invisible since the port —
+    // two people could open the same item and only find out on save. The name
+    // is already on screen in the members list; it does not need fetching.
+    const nameOf = new Map((contextQuery.data?.members ?? []).map((m) => [m.user_id, m.first_name]));
+    const now = Date.now();
+
+    const items = (itemsQuery.data ?? []).map((item) => {
+      const held = item.editing_user_id
+        && item.editing_user_id !== user?.id
+        && item.editing_until
+        && new Date(item.editing_until).getTime() > now;
+
+      return held
+        ? { ...item, editing_by_name: nameOf.get(item.editing_user_id) ?? null }
+        : item;
+    });
+
     const bought = items.filter((item) => item.is_purchased);
     const pending = items.filter((item) => !item.is_purchased);
 
@@ -409,7 +428,7 @@ export function useGroceryList() {
       purchasedCount: bought.length,
       progress: items.length ? Math.round((bought.length / items.length) * 100) : 0,
     };
-  }, [itemsQuery.data]);
+  }, [itemsQuery.data, contextQuery.data?.members, user?.id]);
 
   const refetch = useCallback(
     () => Promise.all([contextQuery.refetch(), itemsQuery.refetch()]),

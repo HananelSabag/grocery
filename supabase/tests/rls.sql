@@ -347,3 +347,96 @@ rollback;
 --   select policyname from pg_policies
 --    where schemaname = 'grocery' and policyname like '%_read_admin';
 --   → no rows
+
+
+-- ===========================================================================
+-- The join code
+--
+-- Sharing is a standing code on the list row, so two things must hold at once:
+-- a member can read their own code — that is the whole feature — and somebody
+-- who is not on the list cannot read it off the table. The only way a code
+-- turns into anything for an outsider is lookup_list_by_code, which answers
+-- with a household's name and nothing else.
+--
+-- Self-contained: it makes its own two accounts, because the block above this
+-- one rolled its accounts back.
+--
+-- Expected: a code exists, the stranger's direct read is 0 rows, the lookup is
+-- 1 row, and every other path is refused.
+-- ===========================================================================
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at,
+                        raw_app_meta_data, raw_user_meta_data)
+values
+  ('cccccccc-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','rls-c@test.local','x',now(),now(),now(),'{}','{"full_name":"User C"}'),
+  ('dddddddd-0000-0000-0000-000000000004','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','rls-d@test.local','x',now(),now(),now(),'{}','{"full_name":"User D"}');
+
+create temp table probe_code(check_name text, result text);
+grant select, insert on probe_code to authenticated, anon;
+
+do $p$
+declare n int; v_code text; v_list bigint;
+begin
+  select join_code, id into v_code, v_list
+  from grocery.lists where owner_id = 'cccccccc-0000-0000-0000-000000000003' limit 1;
+
+  insert into probe_code values ('a new list gets a code', coalesce(v_code, '(none — BAD)'));
+
+  -- ── D, signed in, not on C's list ──
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims',
+    '{"sub":"dddddddd-0000-0000-0000-000000000004","role":"authenticated","email":"rls-d@test.local"}', true);
+
+  select count(*) into n from grocery.lists where join_code = v_code;
+  insert into probe_code values ('stranger reads the code off the table', n || ' rows (expect 0)');
+
+  select count(*) into n from grocery.lookup_list_by_code(lower(v_code));
+  insert into probe_code values ('lookup, lowercased', n || ' rows (expect 1)');
+
+  begin
+    perform grocery.join_by_code('ZZZZZZ');
+    insert into probe_code values ('join with a bad code', 'ACCEPTED — BAD');
+  exception when others then
+    insert into probe_code values ('join with a bad code', 'refused: ' || sqlerrm);
+  end;
+
+  begin
+    perform grocery.rotate_join_code(v_list);
+    insert into probe_code values ('stranger rotates the code', 'ALLOWED — BAD');
+  exception when others then
+    insert into probe_code values ('stranger rotates the code', 'refused: ' || sqlerrm);
+  end;
+
+  -- The code does work for someone who has it.
+  perform grocery.join_by_code(v_code);
+  select count(*) into n from grocery.list_members where list_id = v_list;
+  insert into probe_code values ('after joining by code', n || ' members (expect 2)');
+
+  -- ── Nobody signed in ──
+  perform set_config('role', 'anon', true);
+  perform set_config('request.jwt.claims', null, true);
+
+  begin
+    perform grocery.lookup_list_by_code(v_code);
+    insert into probe_code values ('anon lookup', 'ALLOWED — BAD');
+  exception when others then
+    insert into probe_code values ('anon lookup', 'refused: ' || sqlerrm);
+  end;
+
+  begin
+    perform grocery.join_by_code(v_code);
+    insert into probe_code values ('anon join', 'ALLOWED — BAD');
+  exception when others then
+    insert into probe_code values ('anon join', 'refused: ' || sqlerrm);
+  end;
+
+  perform set_config('role', 'postgres', true);
+end $p$;
+
+select * from probe_code;
+rollback;

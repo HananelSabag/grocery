@@ -5,6 +5,7 @@ import { Check, ShoppingBasket } from 'lucide-react';
 
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../stores/auth';
+import { useActiveList } from '../stores/activeList';
 import { useLanguage } from '../i18n';
 import SignIn from './SignIn';
 import Splash from '../components/Splash';
@@ -24,6 +25,7 @@ export default function InvitePage() {
   const t = useLanguage((s) => s.t);
 
   const { user, ready } = useAuth();
+  const setActiveList = useActiveList((s) => s.setListId);
   const [error, setError] = useState(null);
   const attempted = useRef(false);
 
@@ -32,16 +34,24 @@ export default function InvitePage() {
     attempted.current = true;
 
     (async () => {
-      const { error: rpcError } = await supabase.rpc('accept_invitation', { p_token: token });
+      const { data: listId, error: rpcError } = await supabase.rpc('accept_invitation', { p_token: token });
       if (rpcError) {
         setError(rpcError);
         return;
       }
+
+      // The id the function returns was being thrown away, and that is what
+      // made a successful invitation look like a failure: the next read calls
+      // ensure_list, which answers with the list you joined *first* — your own,
+      // created when you signed up — so you landed on your own empty list and
+      // concluded the link had not worked.
+      if (listId) setActiveList(listId);
+
       // The membership changed, so the list this user resolves to may have too.
       await queryClient.invalidateQueries();
       navigate('/', { replace: true });
     })();
-  }, [ready, user, token, navigate, queryClient]);
+  }, [ready, user, token, navigate, queryClient, setActiveList]);
 
   if (!ready) return <Splash />;
 

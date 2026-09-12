@@ -10,6 +10,7 @@ import UpdateGate from './components/UpdateGate';
 const ListPage    = lazy(() => import('./pages/ListPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const InvitePage  = lazy(() => import('./pages/InvitePage'));
+const JoinPage    = lazy(() => import('./pages/JoinPage'));
 const AdminPage   = lazy(() => import('./pages/AdminPage'));
 
 /**
@@ -45,8 +46,14 @@ export default function App() {
             rather than data. */}
         <Route path="/admin" element={<Protected><AdminPage /></Protected>} />
 
-        {/* The one route that may be opened by someone who has never been
-            here: it signs them in first, then redeems the token. */}
+        {/* The two routes that may be opened by someone who has never been
+            here: both sign them in first, then add them to the list.
+
+            /join is the current one and carries the list's standing code, so
+            the same link works next month and for whoever it gets forwarded
+            to. /invite carries a one-time token and stays only because links
+            of that shape were already sent to people. */}
+        <Route path="/join/:code" element={<JoinPage />} />
         <Route path="/invite/:token" element={<InvitePage />} />
 
         <Route path="*" element={<Navigate to="/" replace />} />

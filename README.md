@@ -33,7 +33,10 @@ Mobile-first PWA · Hebrew & English (RTL/LTR) · Google sign-in · no backend
   of it.
 - **Photos, links and notes** for the item that needs them: a picture matters
   for the one specific yoghurt, not for bread.
-- **Invite by link or by email.** Someone can be on more than one list.
+- **A code, not an invitation.** Every list has a six-character code that does
+  not expire and is not used up: read it out, send it, or send the link that
+  carries it. Replacing it is the only revocation, and it is one button.
+  Someone can be on more than one list.
 - **An admin panel**, for whoever owns the instance: who signed up, which
   lists exist, and how many were actually shared. Granted in RLS rather than
   by a service key, so it widens what can be read and nothing else.
@@ -109,6 +112,14 @@ Re-run it after touching a policy. It wraps everything in a rollback.
 - **A query for "mine" narrows itself.** RLS is the security boundary, never a
   query's only filter — the day a policy widens, every unfiltered query becomes
   a leak. This has happened here once.
+- **Anything that adds you to a list must set the active list too.** Otherwise
+  the next read calls `ensure_list`, which answers with your *oldest*
+  membership — your own list, made when you signed up — so you join somebody's
+  list and land on your own empty one, and conclude the share did not work.
+  This is exactly what happened.
+- **`join_code` is readable off `lists` only by members.** An outsider resolves
+  a code through `lookup_list_by_code`, which returns a household's name and
+  nothing else. Asserted in `supabase/tests/rls.sql`.
 
 ## How a deploy reaches a phone
 

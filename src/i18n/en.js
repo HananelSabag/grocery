@@ -93,6 +93,38 @@ export default {
     action: 'Refresh',
   },
 
+  /**
+   * Sharing moved from a one-time link to a standing code, so the link's own
+   * wording stays in the ported file and the code's is added here.
+   */
+  share: {
+    ...grocery.share,
+    codeTitle: 'List code',
+    codeHint: 'Anyone with the code can join. It does not expire — if you want to shut it off, change it.',
+    copyCode: 'Copy the code',
+    send: 'Send',
+    message: 'Join our shopping list. Code: {{code}}',
+    changeCode: 'Change',
+    changeCodeConfirm: 'Sure?',
+    changeCodeWarning: 'The old code stops working, and so do links sent with it. Anyone already on the list stays.',
+    codeChanged: 'Code changed',
+  },
+
+  /** Joining somebody else's list — by code, or by a link carrying one. */
+  join: {
+    title: 'Join a list',
+    placeholder: '6-character code',
+    action: 'Join',
+    joined: 'You joined the list',
+    notFound: 'No list with that code',
+    notFoundHint: 'Worth asking for the code again — it may have been changed.',
+    toMyList: 'To my list',
+    invitedTo: "You're invited to",
+    memberCount: '{{count}} people on it',
+    memberCount_one: 'one person on it',
+    confirm: 'Join this list',
+  },
+
   common: {
     loading: 'Loading…',
     retry: 'Try again',

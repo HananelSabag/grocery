@@ -491,6 +491,7 @@ export default function ListPage() {
         members={members}
         role={role}
         currentUserId={user?.id}
+        list={list}
       />
 
       <GroceryHistorySheet isOpen={historyOpen} onClose={() => setHistory(false)} />

@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
+import { resolveAvatar } from '../lib/helpers';
 import { api } from '../lib/api';
 import { useAuth } from '../stores/auth';
 import { useActiveList } from '../stores/activeList';
@@ -32,7 +33,7 @@ export function useMyGroceryInvitations() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('invitations')
-        .select('id, token, list_id, created_at, expires_at, lists:list_id ( name ), profiles:inviter_id ( display_name, avatar_url )')
+        .select('id, token, list_id, created_at, expires_at, lists:list_id ( name ), profiles:inviter_id ( display_name, avatar_url, custom_avatar_url )')
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
         .order('created_at', { ascending: false });
@@ -46,7 +47,7 @@ export function useMyGroceryInvitations() {
         ...row,
         list_name: row.lists?.name ?? null,
         inviter_name: row.profiles?.display_name ?? null,
-        inviter_avatar: row.profiles?.avatar_url ?? null,
+        inviter_avatar: resolveAvatar(row.profiles),
       }));
     },
   });

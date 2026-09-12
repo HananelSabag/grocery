@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
+import { resolveAvatar } from '../lib/helpers';
 import { useAuth } from '../stores/auth';
 import { useActiveList } from '../stores/activeList';
 import { useToast } from './useToast';
@@ -58,7 +59,7 @@ export function useGroceryList() {
         supabase.from('trips').select('id, list_id, status, created_at')
           .eq('list_id', listId).eq('status', 'active').single(),
         supabase.from('list_members')
-          .select('id, user_id, role, joined_at, profiles:user_id ( id, display_name, avatar_url )')
+          .select('id, user_id, role, joined_at, profiles:user_id ( id, display_name, avatar_url, custom_avatar_url )')
           .eq('list_id', listId).order('joined_at', { ascending: true }),
       ]);
 
@@ -71,8 +72,8 @@ export function useGroceryList() {
         .select(`id, trip_id, name, category_key, quantity, unit, note, image_url,
                  product_url, sort_order, is_purchased, added_by, purchased_by,
                  purchased_at, version, editing_user_id, editing_until, created_at,
-                 added:added_by ( display_name, avatar_url ),
-                 buyer:purchased_by ( display_name, avatar_url )`)
+                 added:added_by ( display_name, avatar_url, custom_avatar_url ),
+                 buyer:purchased_by ( display_name, avatar_url, custom_avatar_url )`)
         .eq('trip_id', tripResult.data.id)
         .order('sort_order', { ascending: true })
         .order('created_at', { ascending: true });
@@ -85,7 +86,7 @@ export function useGroceryList() {
         ...member,
         first_name: member.profiles?.display_name ?? null,
         username:   member.profiles?.display_name ?? null,
-        avatar_url: member.profiles?.avatar_url ?? null,
+        avatar_url: resolveAvatar(member.profiles),
       }));
 
       return {
@@ -97,7 +98,7 @@ export function useGroceryList() {
           ...item,
           added_by_name:     added?.display_name ?? null,
           purchased_by_name: buyer?.display_name ?? null,
-          purchased_by_avatar: buyer?.avatar_url ?? null,
+          purchased_by_avatar: resolveAvatar(buyer),
         })),
       };
     },

@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowRight, ArrowLeft, LogOut, ShoppingBag, PackageCheck, Users, Check, Shield } from 'lucide-react';
+import { ArrowRight, ArrowLeft, LogOut, ShoppingBag, PackageCheck, Users, Check, Shield, Camera, Loader2 } from 'lucide-react';
 
 import { useProfile } from '../stores/auth';
 import { useTheme } from '../stores/theme';
@@ -11,7 +11,9 @@ import { useGroceryList } from '../hooks/useGroceryList';
 import { useHouseholdStats } from '../hooks/useHouseholdStats';
 import { useRenameList } from '../hooks/useSharing';
 import { useIsAdmin } from '../hooks/useAdmin';
-import { cn } from '../lib/helpers';
+import { useMyProfile } from '../hooks/useMyProfile';
+import { useAvatarUpload } from '../hooks/useAvatar';
+import { cn, resolveAvatar, avatarInitial } from '../lib/helpers';
 import GroceryShareSheet from '../components/GroceryShareSheet';
 import Logo from '../components/Logo';
 
@@ -54,6 +56,12 @@ export default function ProfilePage() {
   const { data: stats } = useHouseholdStats(list?.id);
   const renameList = useRenameList();
   const isAdmin = useIsAdmin();
+  const { data: myProfile } = useMyProfile();
+  const avatar = useAvatarUpload();
+  const fileRef = useRef(null);
+
+  // The row's uploaded picture wins; the token's Google one is the fallback.
+  const picture = resolveAvatar(myProfile) || me.avatar;
 
   const [name, setName] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
@@ -86,22 +94,57 @@ export default function ProfilePage() {
         <h1 className="text-xl font-bold text-gray-900 dark:text-gray-50">{t('profile.title')}</h1>
       </header>
 
-      {/* Who you are — read-only: the name and picture come from Google, and an
-          editable copy here would only drift from it. */}
+      {/* Who you are. The name stays Google's — an editable copy would only
+          drift from it — but the picture is yours to replace: tap it to upload,
+          and clearing it falls back to Google's rather than to a blank circle. */}
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
         className="glass mt-4 flex items-center gap-3 rounded-2xl p-4"
       >
-        {me.avatar ? (
-          <img src={me.avatar} alt="" className="h-14 w-14 rounded-full" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="gradient-action flex h-14 w-14 items-center justify-center rounded-full
-                          text-xl font-bold text-white">
-            {me.name.charAt(0).toUpperCase()}
-          </div>
-        )}
+        <div className="relative shrink-0">
+          <button
+            type="button"
+            onClick={() => fileRef.current?.click()}
+            disabled={avatar.busy}
+            aria-label={t('profile.changePicture')}
+            className="group relative block h-14 w-14 overflow-hidden rounded-full
+                       transition active:scale-95 disabled:opacity-60"
+          >
+            {picture ? (
+              <img src={picture} alt="" className="h-14 w-14 rounded-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="gradient-action flex h-14 w-14 items-center justify-center
+                               rounded-full text-xl font-bold text-white">
+                {avatarInitial(me.name)}
+              </span>
+            )}
+
+            {/* The affordance only appears on hover/press — a permanent camera
+                badge over a face is noise on a screen you open twice a year. */}
+            <span className="absolute inset-0 flex items-center justify-center bg-black/45
+                             opacity-0 transition group-hover:opacity-100 group-active:opacity-100">
+              {avatar.busy
+                ? <Loader2 className="h-5 w-5 animate-spin text-white" />
+                : <Camera className="h-5 w-5 text-white" />}
+            </span>
+          </button>
+
+          <input
+            ref={fileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              // Reset first: picking the same file twice must still fire.
+              event.target.value = '';
+              if (file) avatar.upload(file);
+            }}
+          />
+        </div>
+
         <div className="min-w-0">
           <p className="truncate text-[17px] font-bold text-gray-900 dark:text-gray-100">{me.name}</p>
           <p className="truncate text-[13px] text-gray-500 dark:text-gray-400">{me.email}</p>
@@ -109,6 +152,17 @@ export default function ProfilePage() {
             <Check className="h-3 w-3" />
             {t(isOwner ? 'share.roleOwner' : 'share.roleMember')}
           </p>
+          {myProfile?.custom_avatar_url && (
+            <button
+              type="button"
+              onClick={() => avatar.clear()}
+              disabled={avatar.busy}
+              className="mt-1 text-[11px] font-medium text-gray-400 underline
+                         underline-offset-2 dark:text-gray-500"
+            >
+              {t('profile.removePicture')}
+            </button>
+          )}
         </div>
       </motion.div>
 

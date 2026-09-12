@@ -82,3 +82,17 @@ export const formatTripDate = (iso, language) => {
     ...(date.getFullYear() === today.getFullYear() ? {} : { year: 'numeric' }),
   }).format(date);
 };
+
+/**
+ * Which picture to show for a person.
+ *
+ * Three sources, in order: one they uploaded here, the one Google supplied at
+ * sign-in, and then nothing — at which point the caller draws a letter. Kept
+ * in one function so a row, a sheet, the profile header and the admin table
+ * cannot drift into disagreeing about whose face is whose.
+ */
+export const resolveAvatar = (person) =>
+  person?.custom_avatar_url || person?.avatar_url || person?.avatar || null;
+
+/** The letter drawn when there is no picture at all. */
+export const avatarInitial = (name) => (name || '?').trim().charAt(0).toUpperCase() || '?';

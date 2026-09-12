@@ -43,6 +43,9 @@ export default {
     themeDark: 'כהה',
     themeSystem: 'לפי המכשיר',
     listName: 'שם הרשימה',
+    changePicture: 'החלפת תמונת פרופיל',
+    removePicture: 'הסר תמונה',
+    pictureSaved: 'התמונה עודכנה',
   },
 
   /**

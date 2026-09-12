@@ -47,3 +47,22 @@
     overscroll-behavior: contain;
   }
 }
+
+/**
+ * iOS zooms the whole page when a focused form control renders below 16px, and
+ * does not zoom back out — which reads as "the layout broke and I can't fix
+ * it". The base rule above sets 16px, but it lives in @layer base, so ANY
+ * Tailwind text utility on the element wins over it; that is exactly how the
+ * composer ended up at 15px and the quantity field at 14px.
+ *
+ * This sits outside every layer, so it outranks those utilities, and it only
+ * applies to coarse pointers — a mouse never triggers the zoom, so desktop
+ * keeps whatever size the design asked for.
+ */
+@media (pointer: coarse) {
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}

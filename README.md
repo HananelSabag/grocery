@@ -34,6 +34,9 @@ Mobile-first PWA · Hebrew & English (RTL/LTR) · Google sign-in · no backend
 - **Photos, links and notes** for the item that needs them: a picture matters
   for the one specific yoghurt, not for bread.
 - **Invite by link or by email.** Someone can be on more than one list.
+- **An admin panel**, for whoever owns the instance: who signed up, which
+  lists exist, and how many were actually shared. Granted in RLS rather than
+  by a service key, so it widens what can be read and nothing else.
 
 ## Architecture
 
@@ -43,7 +46,7 @@ the data.
 
 ```
   Browser  ──────────────►  Supabase Postgres
-  React + Vite              ├─ schema `grocery`  (6 tables, 22 RLS policies)
+  React + Vite              ├─ schema `grocery`  (7 tables, 29 RLS policies)
   Supabase JS               ├─ Supabase Auth     (Google only)
                             ├─ Realtime          (items → every open phone)
                             └─ Storage           (item photos, receipts)
@@ -121,9 +124,9 @@ src/
   lib/          Supabase client, the api shim, categories, the aisle guesser
   stores/       auth · language · theme · active list   (zustand)
   i18n/         he / en — the grocery bundle plus this app's own strings
-  hooks/        list state and actions, sharing, history, toasts, insets
+  hooks/        list state and actions, sharing, history, admin, toasts, insets
   components/   the list row, the sheets, the composer, the toolbar
-  pages/        sign in · list · profile · invite
+  pages/        sign in · list · profile · invite · admin
 supabase/
   migrations/   the whole schema, consolidated
   tests/        the RLS proof above

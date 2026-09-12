@@ -4,6 +4,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { useAuth } from '../stores/auth';
 import { useToast } from './useToast';
+import { groceryKeys } from './useGroceryList';
 import { useTranslation } from '../i18n';
 import { compressImage } from '../lib/imageCompression';
 
@@ -29,10 +30,12 @@ export function useAvatarUpload() {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
 
+  // A new face has to reach the members list and every row this person added
+  // or ticked off, which are two separate queries.
   const refresh = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['grocery-state'] });
+    queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts });
+    queryClient.invalidateQueries({ queryKey: groceryKeys.allItems });
     queryClient.invalidateQueries({ queryKey: ['my-profile'] });
-    queryClient.invalidateQueries({ queryKey: ['members'] });
   }, [queryClient]);
 
   /** Remove whatever object a stored public URL points at. */

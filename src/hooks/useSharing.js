@@ -6,6 +6,7 @@ import { resolveAvatar } from '../lib/helpers';
 import { api } from '../lib/api';
 import { useAuth } from '../stores/auth';
 import { useActiveList } from '../stores/activeList';
+import { groceryKeys } from './useGroceryList';
 import { useToast } from './useToast';
 import { useTranslation } from '../i18n';
 
@@ -140,8 +141,11 @@ export function useGrocerySharing() {
   const { t } = useTranslation();
 
   const invalidate = useCallback(() => {
-    queryClient.invalidateQueries({ queryKey: ['list'] });
-    queryClient.invalidateQueries({ queryKey: ['members'] });
+    // `['list']` and `['members']` used to be named here, and neither is a key
+    // any query is stored under — so joining a list changed nothing on screen
+    // until something else happened to refetch.
+    queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts });
+    queryClient.invalidateQueries({ queryKey: groceryKeys.allItems });
     queryClient.invalidateQueries({ queryKey: ['grocery', 'my-invitations', userId] });
     // Accepting, leaving and disbanding change WHICH lists exist for this
     // user, not just what is on one of them.
@@ -275,6 +279,11 @@ export function useRenameList() {
         .from('lists').update({ name: trimmed || null }).eq('id', listId);
       if (error) throw error;
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['list'] }),
+    onSuccess: () => {
+      // The name shows in the header and in the switcher, which are two
+      // different queries.
+      queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts });
+      queryClient.invalidateQueries({ queryKey: ['grocery', 'lists'] });
+    },
   });
 }

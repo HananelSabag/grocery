@@ -46,8 +46,8 @@
 :root.dark {
   /* Over a dark ground the veil is faint — a white fill anywhere near the
      light theme's turns the plate milky and kills the refraction. */
-  --glass-fill: 30 41 59;
-  --glass-fill-a: 0.55;
+  --glass-fill: 30 32 40;
+  --glass-fill-a: 0.6;
   --glass-border: 255 255 255;
   --glass-border-a: 0.1;
   --glass-highlight-a: 0.14;
@@ -64,9 +64,15 @@
     linear-gradient(180deg, rgb(239 246 255) 0%, rgb(248 250 252) 45%, rgb(241 245 249) 100%);
 }
 
+/* Neutral, not navy.
+ *
+ * This was a blue-tinted dark ground, which did two things wrong: it read as
+ * SpendWise, whose whole identity is indigo, and it flattened the mark — a
+ * blue glass cart on a blue field has nothing to stand out against. A near
+ * neutral slate lets the logo be the only blue on screen. */
 :root.dark .app-bg {
   background:
-    linear-gradient(180deg, rgb(9 14 28) 0%, rgb(11 17 32) 45%, rgb(7 11 22) 100%);
+    linear-gradient(180deg, rgb(14 15 19) 0%, rgb(17 18 23) 50%, rgb(11 12 16) 100%);
 }
 
 /* Two soft blobs, fixed so they stay put while the list scrolls over them —
@@ -99,8 +105,11 @@
   background: rgb(var(--violet) / 0.2);
 }
 
-:root.dark .app-bg::before { background: rgb(var(--brand-600) / 0.3); }
-:root.dark .app-bg::after  { background: rgb(var(--violet) / 0.22); }
+/* Dimmer in the dark, and pushed off the top corner where the mark sits. At
+   0.3 the brand blob was a wash across the header rather than light behind
+   glass, and it was most of what made the screen look like the other app. */
+:root.dark .app-bg::before { background: rgb(var(--brand-600) / 0.16); }
+:root.dark .app-bg::after  { background: rgb(var(--violet) / 0.13); }
 
 @media (prefers-reduced-motion: no-preference) {
   .app-bg::before { animation: drift-a 26s ease-in-out infinite alternate; }

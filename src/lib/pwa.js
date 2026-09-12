@@ -31,6 +31,17 @@ const SETTLE_MS = 4_000;
 const RECOVERED_KEY = 'grocery_chunk_reload';
 
 /**
+ * Ask for a new build right now, rather than waiting for the next beat.
+ *
+ * Set once the worker is registered; a no-op before that and in dev. The
+ * caller is App's unknown-route screen: landing on a path this build does not
+ * recognise is one of the few moments where being one deploy behind is not a
+ * cosmetic problem — it is a link that does nothing.
+ */
+let checkNow = () => {};
+export const checkForUpdate = () => checkNow();
+
+/**
  * Is this person in the middle of something a reload would throw away?
  *
  * Read off the DOM rather than off app state, so it stays true for screens
@@ -116,6 +127,7 @@ export const initPwa = () => {
         }
       };
 
+      checkNow = check;
       setInterval(check, CHECK_EVERY_MS);
       document.addEventListener('visibilitychange', check);
 

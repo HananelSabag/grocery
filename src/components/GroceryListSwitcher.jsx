@@ -17,9 +17,20 @@ import BottomSheet from './BottomSheet';
 import { cn } from '../lib/helpers';
 import { useTranslation } from '../i18n';
 
-export const listLabel = (list, t) => (
-  list.isOwn ? t('lists.mine') : t('lists.someones', { name: list.ownerName })
-);
+/**
+ * What to call a list.
+ *
+ * A nickname somebody actually chose wins. Otherwise it is named by whose it
+ * is, because the alternative — every list showing the same default — is no
+ * help at all on the one screen whose whole job is telling them apart.
+ */
+export const listLabel = (list, t) => {
+  const nickname = list?.name?.trim();
+  if (nickname) return nickname;
+  return list?.isOwn
+    ? t('lists.mine')
+    : t('lists.someones', { name: list?.ownerName || t('lists.someone') });
+};
 
 const GroceryListSwitcher = ({ isOpen, onClose, lists, activeListId, onSwitch, busyId }) => {
   const { t } = useTranslation('grocery');

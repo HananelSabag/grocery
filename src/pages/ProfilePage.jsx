@@ -230,28 +230,42 @@ export default function ProfilePage() {
         </div>
       </Section>
 
+      {/* A nickname, not a required name. Most people have one list and never
+          need it; it earns its place the moment a second one arrives and both
+          would otherwise be called the same thing. */}
       {isOwner && list && (
-        <Section title={t('profile.listName')}>
-          <div className="flex gap-2 p-3">
-            <input
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              placeholder={list.name || ''}
-              className={field}
-            />
-            <button
-              type="button"
-              disabled={!name.trim() || renameList.isPending}
-              onClick={() => renameList.mutate({ listId: list.id, name }, { onSuccess: () => setName('') })}
-              className={cn(
-                'min-h-[44px] shrink-0 rounded-xl px-4 font-bold text-white transition-all',
-                name.trim() && !renameList.isPending
-                  ? 'gradient-action gradient-glow active:scale-95'
-                  : 'bg-gray-200/60 text-gray-400 dark:bg-gray-700/50 dark:text-gray-600'
-              )}
-            >
-              {t('common.save')}
-            </button>
+        <Section title={t('lists.nickname')}>
+          <div className="p-3">
+            <div className="flex gap-2">
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder={list.name?.trim() || t('lists.defaultName')}
+                // Long enough for anything meant seriously, short enough that
+                // the header stays a header. It truncates beyond this anyway.
+                maxLength={40}
+                className={cn(field, 'truncate')}
+              />
+              <button
+                type="button"
+                disabled={name.trim() === (list.name ?? '').trim() || renameList.isPending}
+                onClick={() => renameList.mutate(
+                  { listId: list.id, name },
+                  { onSuccess: () => setName('') }
+                )}
+                className={cn(
+                  'min-h-[44px] shrink-0 rounded-xl px-4 font-bold text-white transition-all',
+                  name.trim() !== (list.name ?? '').trim() && !renameList.isPending
+                    ? 'gradient-action gradient-glow active:scale-95'
+                    : 'bg-gray-200/60 text-gray-400 dark:bg-gray-700/50 dark:text-gray-600'
+                )}
+              >
+                {t('common.save')}
+              </button>
+            </div>
+            <p className="mt-1.5 px-1 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
+              {t('lists.nicknameHint')}
+            </p>
           </div>
         </Section>
       )}

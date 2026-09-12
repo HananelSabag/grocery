@@ -75,21 +75,40 @@ export function useGroceryLists() {
     refetchOnWindowFocus: true,
     retry: 1,
     queryFn: async () => {
+      // The switcher renders whose list it is and how much is on it, so all of
+      // that is fetched here. It used to return only id/name/owner_id/role,
+      // and the component reads `isOwn`, `ownerName`, `openItems` and
+      // `memberCount` — every one of them undefined, which is why every row
+      // read "הרשימה של undefined" and claimed to be empty.
       const { data, error } = await supabase
         .from('list_members')
-        .select('role, joined_at, lists:list_id ( id, name, owner_id, archived_at )')
+        .select(`role, joined_at,
+                 lists:list_id (
+                   id, name, owner_id, archived_at,
+                   owner:owner_id ( display_name ),
+                   members:list_members ( id ),
+                   trips ( id, status, items ( id, is_purchased ) )
+                 )`)
         .order('joined_at', { ascending: true });
 
       if (error) throw error;
 
       return (data ?? [])
         .filter((row) => row.lists && !row.lists.archived_at)
-        .map((row) => ({
-          id: row.lists.id,
-          name: row.lists.name,
-          owner_id: row.lists.owner_id,
-          role: row.role,
-        }));
+        .map((row) => {
+          const list = row.lists;
+          const active = (list.trips ?? []).find((t) => t.status === 'active');
+          return {
+            id: list.id,
+            name: list.name,
+            owner_id: list.owner_id,
+            role: row.role,
+            isOwn: list.owner_id === userId,
+            ownerName: list.owner?.display_name || '',
+            memberCount: (list.members ?? []).length,
+            openItems: (active?.items ?? []).filter((i) => !i.is_purchased).length,
+          };
+        });
     },
   });
 
@@ -228,13 +247,22 @@ export function useGrocerySharing() {
   };
 }
 
-/** Rename the list. Owner-only, enforced by policy rather than by hiding the field. */
+/**
+ * Set or clear a list's nickname. Owner-only, enforced by policy rather than
+ * by hiding the field.
+ *
+ * An emptied field stores NULL, not an empty string: unnamed is a real state
+ * that the switcher reads to decide between showing the nickname and showing
+ * whose list it is, and `''` would satisfy neither.
+ */
 export function useRenameList() {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: async ({ listId, name }) => {
-      const { error } = await supabase.from('lists').update({ name: name.trim() }).eq('id', listId);
+      const trimmed = (name ?? '').trim();
+      const { error } = await supabase
+        .from('lists').update({ name: trimmed || null }).eq('id', listId);
       if (error) throw error;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['list'] }),

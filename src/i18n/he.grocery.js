@@ -185,6 +185,10 @@ export default {
     openItems: "{{count}} לקנות",
     members: "{{count}} אנשים",
     switched: "עברתם רשימה",
+    defaultName: "רשימת קניות",
+    someone: "מישהו",
+    nickname: "כינוי לרשימה",
+    nicknameHint: "רק כדי להבדיל בין רשימות. אפשר להשאיר ריק.",
   },
 
   share: {

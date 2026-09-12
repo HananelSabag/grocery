@@ -2,15 +2,39 @@
 <html lang="he" dir="rtl">
   <head>
     <meta charset="UTF-8" />
-    <!-- viewport-fit=cover is what lets the safe-area-inset-* values be
-         non-zero on notched phones; without it the composer sits under the
-         home indicator. maximum-scale is deliberately absent: pinch-zoom
-         stays available, only the iOS focus-zoom is avoided (by 16px inputs). -->
+
+    <!-- viewport-fit=cover is what makes safe-area-inset-* non-zero on a
+         notched phone; without it the composer sits under the home indicator.
+         maximum-scale / user-scalable are deliberately absent: iOS has ignored
+         them since iOS 10, and setting them only breaks pinch-zoom for people
+         who need it. The way to stop the focus-zoom is a 16px form control,
+         which is enforced in index.css. -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#2864ef" />
+
+    <!-- Two values so the standalone status bar matches the app rather than
+         flashing a light bar over a dark screen. -->
+    <meta name="theme-color" content="#eff6ff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0b1120" media="(prefers-color-scheme: dark)" />
+
     <meta name="description" content="רשימת קניות משותפת למשפחה" />
+
+    <!-- iOS standalone. `apple-mobile-web-app-capable` is what makes an
+         Add-to-Home-Screen launch open without Safari's chrome; iOS still
+         reads it even though the manifest's display mode is the modern route.
+         The title is the label under the icon on the home screen. -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="רשימת קניות" />
+    <!-- `default` rather than black-translucent: translucent puts the page
+         under the status bar, which needs the app to own that strip in both
+         themes. Not worth it for a list. -->
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
+    <!-- iOS ignores the manifest's icons and reads this. Without it the home
+         screen shows a screenshot of the page instead of the mark. Opaque on
+         purpose: iOS composites a transparent PNG onto black. -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />

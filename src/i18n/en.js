@@ -32,6 +32,9 @@ export default {
     themeDark: 'Dark',
     themeSystem: 'Match device',
     listName: 'List name',
+    changePicture: 'Change profile picture',
+    removePicture: 'Remove picture',
+    pictureSaved: 'Picture updated',
   },
 
   /** See he.js — the failures that are Supabase's rather than a server's. */

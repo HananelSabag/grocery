@@ -2,6 +2,7 @@ import { useCallback, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
+import { resolveAvatar } from '../lib/helpers';
 import { useAuth } from '../stores/auth';
 import { useToast } from './useToast';
 import { useTranslation } from '../i18n';
@@ -39,7 +40,7 @@ export function useGroceryHistory({ enabled = true, limit = 20 } = {}) {
         .from('trips')
         .select(
           `id, store_name, total_ils, receipt_path, completed_at, completed_by,
-           profiles:completed_by ( display_name, avatar_url ),
+           profiles:completed_by ( display_name, avatar_url, custom_avatar_url ),
            items ( id )`,
           { count: 'exact' }
         )
@@ -56,7 +57,7 @@ export function useGroceryHistory({ enabled = true, limit = 20 } = {}) {
         ...trip,
         item_count: items?.length ?? 0,
         completed_by_first_name: profiles?.display_name ?? null,
-        completed_by_avatar: profiles?.avatar_url ?? null,
+        completed_by_avatar: resolveAvatar(profiles),
         has_receipt: !!trip.receipt_path,
       }));
 
@@ -83,7 +84,7 @@ export function useGroceryTripDetail(tripId) {
       const [{ data: trip, error: tripError }, { data: items, error: itemsError }] = await Promise.all([
         supabase
           .from('trips')
-          .select('id, store_name, total_ils, receipt_path, completed_at, completed_by, profiles:completed_by ( display_name, avatar_url )')
+          .select('id, store_name, total_ils, receipt_path, completed_at, completed_by, profiles:completed_by ( display_name, avatar_url, custom_avatar_url )')
           .eq('id', tripId)
           .single(),
         supabase

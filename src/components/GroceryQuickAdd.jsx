@@ -43,10 +43,23 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
   const inputRef = useRef(null);
   const rootRef = useRef(null);
 
-  // So the empty list's own call to action can put the cursor here rather
-  // than opening a second, different way to add an item.
+  /**
+   * So the empty list's own call to action can put the cursor here rather than
+   * opening a second, different way to add an item.
+   *
+   * Answers whether it actually took focus. Two of these are mounted at once —
+   * one docked for phones, one in the desktop rail — and the hidden one is
+   * hidden with `display:none`, which does NOT unmount it. Focusing that one
+   * silently does nothing, which is exactly what "add the first item" did on a
+   * phone. A zero-width rect is how a display:none element answers.
+   */
   useImperativeHandle(ref, () => ({
-    focus: () => inputRef.current?.focus(),
+    focus: () => {
+      const input = inputRef.current;
+      if (!input || input.getBoundingClientRect().width === 0) return false;
+      input.focus();
+      return true;
+    },
   }), []);
 
   // Guessing follows the name until the user overrides it, and starts following
@@ -183,7 +196,7 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
           placeholder={t('quickAdd.placeholder')}
           aria-label={t('quickAdd.aria')}
           enterKeyHint="done"
-          className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-50"
+          className="min-w-0 flex-1 bg-transparent py-2.5 text-[16px] text-gray-900 outline-none placeholder:text-gray-400 dark:text-gray-50"
         />
 
         {/* Only meaningful once there is an item to attach them to. */}
@@ -196,7 +209,7 @@ const GroceryQuickAdd = forwardRef(({ onAdd, onExpand, className, style }, ref) 
               inputMode="decimal"
               placeholder="1"
               aria-label={t('quickAdd.quantity')}
-              className="w-9 shrink-0 rounded-lg bg-gray-100 py-1.5 text-center text-sm tabular-nums text-gray-700 outline-none placeholder:text-gray-400 dark:bg-gray-700 dark:text-gray-100"
+              className="w-10 shrink-0 rounded-lg bg-gray-100 py-1.5 text-center text-[16px] tabular-nums text-gray-700 outline-none placeholder:text-gray-400 dark:bg-gray-700 dark:text-gray-100"
             />
             <button
               type="button"

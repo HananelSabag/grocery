@@ -58,34 +58,49 @@ export const initPwa = () => {
     window.location.reload();
   });
 
-  let apply = null;
+  // Whether a worker was already in charge when this page loaded. On a first
+  // ever visit the new worker claims the page a moment after it installs, and
+  // that claim must not be mistaken for an update — it would reload a page
+  // that is already showing the newest build.
+  const hadController = !!navigator.serviceWorker?.controller;
+
+  let pending = false;
+  let applied = false;
   let settling = null;
 
-  const settle = () => {
-    if (!apply) return;
+  /** Replace the page with the new build. Idempotent; the first call wins. */
+  const swap = (updateSW) => {
+    if (applied) return;
+    applied = true;
+    clearInterval(settling);
 
-    // Off screen there is nothing to disturb, so take it now: they come back
-    // to the new build already rendered, having seen nothing happen.
-    if (document.visibilityState === 'hidden' || !isBusy()) {
-      clearInterval(settling);
-      apply();
-      return;
-    }
+    // Tells a worker that is still waiting to take over, and reloads once it
+    // has. The timer is the belt: if there was nothing left to promote, that
+    // promise never settles and we would sit here on the old code forever.
+    updateSW(true);
+    setTimeout(() => window.location.reload(), 2_000);
+  };
 
-    // Busy. Ask, and keep trying — whichever comes first wins.
-    useUpdate.getState().ask(apply);
+  const armSettle = (updateSW) => {
+    if (pending || applied) return;
+    pending = true;
+    settling = setInterval(() => {
+      // Off screen there is nothing to disturb, so take it now: they come back
+      // to the new build already rendered, having seen nothing happen.
+      if (document.visibilityState === 'hidden' || !isBusy()) {
+        swap(updateSW);
+        return;
+      }
+      // Busy. Ask, and keep trying — whichever comes first wins.
+      useUpdate.getState().ask(() => swap(updateSW));
+    }, SETTLE_MS);
   };
 
   const updateSW = registerSW({
     immediate: true,
 
     onNeedRefresh() {
-      // `updateSW(true)` tells the waiting worker to take over and reloads the
-      // page once it has; calling location.reload() here instead would just
-      // paint the old shell again.
-      apply = () => updateSW(true);
-      clearInterval(settling);
-      settling = setInterval(settle, SETTLE_MS);
+      armSettle(updateSW);
     },
 
     onRegisteredSW(_swUrl, registration) {
@@ -102,11 +117,14 @@ export const initPwa = () => {
       };
 
       setInterval(check, CHECK_EVERY_MS);
-      document.addEventListener('visibilitychange', () => {
-        check();
-        // Coming back is the safest moment there is to swap the page, and
-        // going away is the second safest.
-        settle();
+      document.addEventListener('visibilitychange', check);
+
+      // The worker activates itself, so by the time it takes charge of this
+      // page the assets under us have already been replaced. This is the
+      // signal that matters; onNeedRefresh fires a moment earlier when there
+      // is a waiting worker to catch, and both land in the same place.
+      navigator.serviceWorker?.addEventListener('controllerchange', () => {
+        if (hadController) armSettle(updateSW);
       });
     },
   });

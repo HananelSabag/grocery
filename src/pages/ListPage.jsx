@@ -16,9 +16,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AlertCircle, ChevronDown, Flag, Plus, ShoppingCart, Users } from 'lucide-react';
 
-import { cn } from '../lib/helpers';
+import { cn, resolveAvatar } from '../lib/helpers';
 import { useTranslation } from '../i18n';
-import { useAuth } from '../stores/auth';
+import { useAuth, useProfile } from '../stores/auth';
+import { useMyProfile } from '../hooks/useMyProfile';
 import { useToast } from '../hooks/useToast';
 import { useGroceryList } from '../hooks/useGroceryList';
 import { useGroceryLists, useMyGroceryInvitations } from '../hooks/useSharing';
@@ -43,6 +44,8 @@ const DOCK_HEIGHT_VAR = '--grocery-dock-height';
 export default function ListPage() {
   const { t, isRTL } = useTranslation();
   const user = useAuth((s) => s.user);
+  const me = useProfile();
+  const { data: myProfile } = useMyProfile();
   const toast = useToast();
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -207,11 +210,16 @@ export default function ListPage() {
       <div className="mx-auto w-full max-w-6xl px-3 pt-[env(safe-area-inset-top)] sm:px-5 lg:px-6">
 
         <GroceryToolbar
-          activeListLabel={activeList ? listLabel(activeList, t) : t('title')}
+          activeListLabel={
+            list?.name?.trim()
+            || (activeList ? listLabel(activeList, t) : t('lists.defaultName'))
+          }
           onSwitchList={hasMultiple ? () => setListsOpen(true) : undefined}
           onShare={() => setShareOpen(true)}
           onHistory={() => setHistory(true)}
           onProfile={() => navigate('/profile')}
+          profilePicture={resolveAvatar(myProfile) || me.avatar}
+          profileName={me.name}
           invitationCount={myInvitations.length}
           statusLine={statusLine}
           progress={progress}

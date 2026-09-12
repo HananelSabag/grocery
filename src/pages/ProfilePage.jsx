@@ -299,6 +299,9 @@ export default function ProfilePage() {
         <p className="text-[11px] font-medium text-gray-400 dark:text-gray-500">
           {t('app.name')} · {t('app.tagline')}
         </p>
+        {/* Which build this device is on. The only way to answer "did my fix
+            reach your phone?" without asking someone to describe a screen. */}
+        <p className="font-mono text-[10px] text-gray-300 dark:text-gray-600">{__BUILD_ID__}</p>
       </div>
 
       <GroceryShareSheet

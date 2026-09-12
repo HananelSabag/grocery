@@ -5,6 +5,7 @@ import { useAuth } from './stores/auth';
 import SignIn from './pages/SignIn';
 import Splash from './components/Splash';
 import InstallPrompt from './components/InstallPrompt';
+import UpdateGate from './components/UpdateGate';
 
 const ListPage    = lazy(() => import('./pages/ListPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
@@ -30,6 +31,9 @@ export default function App() {
     <Suspense fallback={<Splash />}>
       {/* Offered from anywhere, shown once, never over the first screen. */}
       <InstallPrompt />
+
+      {/* Only ever appears when a new build could not take over quietly. */}
+      <UpdateGate />
 
       <Routes>
         <Route path="/" element={<Protected><ListPage /></Protected>} />

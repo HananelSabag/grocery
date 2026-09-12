@@ -9,6 +9,7 @@ import { queryClient } from './lib/queryClient';
 import { initAuth } from './stores/auth';
 import { initTheme } from './stores/theme';
 import { initLanguage } from './i18n';
+import { initPwa } from './lib/pwa';
 import './index.css';
 
 // All three run before the first paint: the document needs its lang/dir and
@@ -18,6 +19,11 @@ import './index.css';
 initLanguage();
 initTheme();
 initAuth();
+
+// Not part of the first paint: this registers the service worker and then
+// keeps asking whether a newer build has been deployed, so a fix reaches a
+// phone that has had the app open for a week.
+initPwa();
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

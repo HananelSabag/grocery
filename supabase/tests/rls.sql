@@ -440,3 +440,102 @@ end $p$;
 
 select * from probe_code;
 rollback;
+
+
+-- ===========================================================================
+-- More than one list, and stopping a share
+--
+-- create_list must give its owner a complete list — membership and an open
+-- trip — and refuse to make an unnamed one. stop_sharing must remove everyone
+-- but the owner, change the code, and leave the list alive for the owner: the
+-- version it replaced archived the list for its owner too.
+--
+-- Self-contained, like the block above.
+--
+-- Expected: every line reads as its parenthesis says, and every refusal is a
+-- refusal.
+-- ===========================================================================
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at,
+                        raw_app_meta_data, raw_user_meta_data)
+values
+  ('eeeeeeee-0000-0000-0000-000000000005','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','rls-e@test.local','x',now(),now(),now(),'{}','{"full_name":"User E"}'),
+  ('ffffffff-0000-0000-0000-000000000006','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','rls-f@test.local','x',now(),now(),now(),'{}','{"full_name":"User F"}');
+
+create temp table probe_lists(check_name text, result text);
+grant select, insert on probe_lists to authenticated, anon;
+
+do $p$
+declare
+  v_list bigint; v_home bigint; n int; v_name text; v_before text; v_after text; v_archived timestamptz;
+  e_claims text := '{"sub":"eeeeeeee-0000-0000-0000-000000000005","role":"authenticated","email":"rls-e@test.local"}';
+  f_claims text := '{"sub":"ffffffff-0000-0000-0000-000000000006","role":"authenticated","email":"rls-f@test.local"}';
+begin
+  perform set_config('role', 'authenticated', true);
+  perform set_config('request.jwt.claims', e_claims, true);
+
+  v_list := grocery.create_list('  אילת  ');
+  select name, join_code into v_name, v_before from grocery.lists where id = v_list;
+  insert into probe_lists values ('create_list: name trimmed', coalesce(v_name, '(null)') || ' (expect אילת)');
+  select count(*) into n from grocery.list_members where list_id = v_list and role = 'owner';
+  insert into probe_lists values ('create_list: owner membership', n || ' (expect 1)');
+  select count(*) into n from grocery.trips where list_id = v_list and status = 'active';
+  insert into probe_lists values ('create_list: active trip', n || ' (expect 1)');
+
+  begin
+    perform grocery.create_list('   ');
+    insert into probe_lists values ('create_list with a blank name', 'ACCEPTED — BAD');
+  exception when others then
+    insert into probe_lists values ('create_list with a blank name', 'refused: ' || sqlerrm);
+  end;
+
+  begin
+    update grocery.lists set name = '' where id = v_list;
+    insert into probe_lists values ('rename to an empty string', 'ACCEPTED — BAD');
+  exception when others then
+    insert into probe_lists values ('rename to an empty string', 'refused: ' || sqlerrm);
+  end;
+
+  -- F joins with the code, and cannot stop E's sharing.
+  perform set_config('request.jwt.claims', f_claims, true);
+  perform grocery.join_by_code(v_before);
+  begin
+    perform grocery.stop_sharing(v_list);
+    insert into probe_lists values ('stop_sharing by a member', 'ALLOWED — BAD');
+  exception when others then
+    insert into probe_lists values ('stop_sharing by a member', 'refused: ' || sqlerrm);
+  end;
+
+  -- E stops sharing: F is out, E stays, the code changes, nothing is archived.
+  perform set_config('request.jwt.claims', e_claims, true);
+  v_after := grocery.stop_sharing(v_list);
+  select count(*) into n from grocery.list_members where list_id = v_list;
+  insert into probe_lists values ('stop_sharing: members left', n || ' (expect 1, the owner)');
+  insert into probe_lists values ('stop_sharing: code changed', (v_after <> v_before)::text || ' (expect true)');
+  select archived_at into v_archived from grocery.lists where id = v_list;
+  insert into probe_lists values ('stop_sharing: list still live', (v_archived is null)::text || ' (expect true)');
+
+  -- The app's delete: archive the list you are on, and land on another one.
+  update grocery.lists set archived_at = now() where id = v_list;
+  v_home := grocery.ensure_list();
+  insert into probe_lists values ('after deleting, ensure_list lands elsewhere', (v_home <> v_list)::text || ' (expect true)');
+
+  perform set_config('role', 'anon', true);
+  perform set_config('request.jwt.claims', null, true);
+  begin
+    perform grocery.create_list('x');
+    insert into probe_lists values ('anon create_list', 'ALLOWED — BAD');
+  exception when others then
+    insert into probe_lists values ('anon create_list', 'refused: ' || sqlerrm);
+  end;
+
+  perform set_config('role', 'postgres', true);
+end $p$;
+
+select * from probe_lists;
+rollback;

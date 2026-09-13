@@ -108,6 +108,34 @@ export default {
     changeCodeConfirm: 'Sure?',
     changeCodeWarning: 'The old code stops working, and so do links sent with it. Anyone already on the list stays.',
     codeChanged: 'Code changed',
+    // "Stop sharing" used to archive the whole list, for its owner too. It now
+    // does what this sentence says, so the sentence can finally be true.
+    disband: 'Stop sharing',
+    disbandConfirm: 'Remove everyone from this list? The code will change, and the list stays with you.',
+  },
+
+  /**
+   * More than one list: the switcher in the header is now also where a list is
+   * made, named and removed. Naming moved here from the profile page.
+   */
+  lists: {
+    ...grocery.lists,
+    ownedBy: "{{name}}'s",
+    create: 'New list',
+    createPlaceholder: 'e.g. Eilat, Friday dinner',
+    createHint: 'Left blank, it will be called "{{name}}"',
+    createAction: 'Create',
+    created: 'Created "{{name}}"',
+    newDefault: 'List {{n}}',
+    rename: 'Rename',
+    renamed: 'Name updated',
+    nameRequired: 'With more than one list, each one needs a name',
+    archive: 'Delete',
+    archiveConfirmButton: 'Yes, delete',
+    archiveConfirm: '"{{name}}" and its items will be deleted.',
+    archiveConfirmShared: '"{{name}}" will also be gone for {{count}} other people.',
+    archiveConfirmShared_one: '"{{name}}" will also be gone for one other person.',
+    archived: 'List deleted',
   },
 
   /** Joining somebody else's list — by code, or by a link carrying one. */

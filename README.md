@@ -36,7 +36,11 @@ Mobile-first PWA · Hebrew & English (RTL/LTR) · Google sign-in · no backend
 - **A code, not an invitation.** Every list has a six-character code that does
   not expire and is not used up: read it out, send it, or send the link that
   carries it. Replacing it is the only revocation, and it is one button.
-  Someone can be on more than one list.
+- **More than one list.** The weekly shop, and a list for Eilat made ahead of
+  time. The header always opens the switcher, which is where a list is made,
+  renamed and deleted; each one says what it is called and, when it is not
+  yours, whose it is. A list you make is always named — left blank it becomes
+  "רשימה 2" — so two of yours never read the same.
 - **An admin panel**, for whoever owns the instance: who signed up, which
   lists exist, and how many were actually shared. Granted in RLS rather than
   by a service key, so it widens what can be read and nothing else.

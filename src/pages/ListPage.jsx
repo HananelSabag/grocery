@@ -2,13 +2,13 @@
  * The shared household grocery list.
  *
  * Vertical space is the scarce resource here, so the page keeps its own chrome
- * to a single scrolling toolbar row and a hairline progress bar. Adding an item
- * is a docked composer, not a floating button that opens a form: type, press
- * enter, type the next one.
+ * to a single toolbar row and a hairline progress bar. Adding an item is a
+ * docked composer, not a floating button that opens a form: type, press enter,
+ * type the next one.
  *
- * Ported from SpendWise, where this screen also had to clear an app-wide bottom
- * navigation. Standalone there is none, so the composer sits on the safe area
- * itself and the list gets the ~74px back.
+ * The frame is ListShell — the header, the list as the only thing that scrolls,
+ * and the composer as the last row, all sized to the part of the screen you can
+ * see — so an iPhone keyboard shortens the page instead of dragging it away.
  */
 
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -22,13 +22,15 @@ import { useAuth, useProfile } from '../stores/auth';
 import { useMyProfile } from '../hooks/useMyProfile';
 import { useToast } from '../hooks/useToast';
 import { useGroceryList } from '../hooks/useGroceryList';
-import { useGroceryLists, useMyGroceryInvitations } from '../hooks/useSharing';
+import {
+  useArchiveList, useCreateList, useGroceryLists, useMyGroceryInvitations, useRenameList,
+} from '../hooks/useSharing';
 import { useBottomInset } from '../hooks/useBottomInset';
-import { useKeyboardInset } from '../hooks/useKeyboardInset';
 import { hasLearnedGesture, onGestureLearned } from '../lib/gestureHint';
 import { CATEGORY_BY_KEY, DEFAULT_CATEGORY } from '../lib/categories';
 
 import Splash from '../components/Splash';
+import ListShell from '../components/ListShell';
 import GroceryToolbar from '../components/GroceryToolbar';
 import GroceryItemRow from '../components/GroceryItemRow';
 import GroceryItemSheet from '../components/GroceryItemSheet';
@@ -38,8 +40,11 @@ import GroceryHistorySheet from '../components/GroceryHistorySheet';
 import GroceryListSwitcher, { listLabel } from '../components/GroceryListSwitcher';
 import GroceryQuickAdd from '../components/GroceryQuickAdd';
 
-/** The composer publishes its own reach, so nothing underneath sits beneath it. */
+/** The composer publishes its own reach, for the few things that float above it. */
 const DOCK_HEIGHT_VAR = '--grocery-dock-height';
+
+/** How long a switch may take before the switcher stops waiting for it. */
+const SWITCH_GIVE_UP_MS = 8_000;
 
 export default function ListPage() {
   const { t, isRTL } = useTranslation();
@@ -51,7 +56,7 @@ export default function ListPage() {
   const [searchParams, setSearchParams] = useSearchParams();
 
   const {
-    isLoading, isError, refetch,
+    isLoading, isError, isSwitching, refetch,
     list, members, sections, purchased,
     pendingCount, purchasedCount, progress, role,
     addItem, updateItem, togglePurchased, deleteItem,
@@ -59,7 +64,10 @@ export default function ListPage() {
   } = useGroceryList();
 
   const { invitations: myInvitations } = useMyGroceryInvitations();
-  const { lists, hasMultiple } = useGroceryLists();
+  const { lists } = useGroceryLists();
+  const { mutateAsync: createList } = useCreateList();
+  const { mutateAsync: renameList } = useRenameList();
+  const { mutateAsync: archiveList } = useArchiveList();
 
   // `?tab=history` is kept as the way in, because older links point at it —
   // it just opens the sheet now instead of switching a tab.
@@ -76,21 +84,68 @@ export default function ListPage() {
 
   const sectionRefs = useRef({});
   const measureDock = useBottomInset(DOCK_HEIGHT_VAR);
-  const keyboardInset = useKeyboardInset();
   const quickAddRef = useRef(null);
   const desktopQuickAddRef = useRef(null);
 
   useEffect(() => onGestureLearned(() => setShowGestureHint(false)), []);
 
   const activeListId = list?.id ?? null;
-  const activeList = lists.find((entry) => String(entry.id) === String(activeListId));
 
-  const handleSwitchList = useCallback(async (id) => {
+  /**
+   * The switcher stays open, spinner and all, until the list it pointed at is
+   * the one actually on screen. Closing on the tap would show the old list for
+   * a beat under the new name. And a list that never arrives — removed a moment
+   * ago on another phone, say — must not leave the spinner running forever.
+   */
+  useEffect(() => {
+    if (switchingTo == null) return undefined;
+    if (String(activeListId) === String(switchingTo) && !isSwitching) {
+      setSwitchingTo(null);
+      setListsOpen(false);
+      return undefined;
+    }
+    const giveUp = setTimeout(() => setSwitchingTo(null), SWITCH_GIVE_UP_MS);
+    return () => clearTimeout(giveUp);
+  }, [switchingTo, activeListId, isSwitching]);
+
+  const handleSwitchList = useCallback((id) => {
     setSwitchingTo(id);
-    const switched = await switchList(id);
-    setSwitchingTo(null);
-    if (switched) setListsOpen(false);
+    switchList(id);
   }, [switchList]);
+
+  const handleCreateList = useCallback(async (name) => {
+    try {
+      const id = await createList(name);
+      setSwitchingTo(id);
+      toast.success(t('lists.created', { name }));
+      return id;
+    } catch {
+      toast.error(t('errors.generic'));
+      return null;
+    }
+  }, [createList, toast, t]);
+
+  const handleRenameList = useCallback(async (listId, name) => {
+    try {
+      await renameList({ listId, name });
+      toast.success(t('lists.renamed'));
+      return true;
+    } catch {
+      toast.error(t('errors.generic'));
+      return false;
+    }
+  }, [renameList, toast, t]);
+
+  const handleArchiveList = useCallback(async (listId) => {
+    try {
+      await archiveList(listId);
+      toast.success(t('lists.archived'));
+      return true;
+    } catch {
+      toast.error(t('errors.generic'));
+      return false;
+    }
+  }, [archiveList, toast, t]);
 
   const setHistory = useCallback((open) => {
     setHistoryOpen(open);
@@ -199,35 +254,39 @@ export default function ListPage() {
         purchasedCount > 0 ? t('progress.done', { count: purchasedCount }) : null,
       ].filter(Boolean).join(' · ');
 
+  // Named off the list already on screen rather than off the switcher's own
+  // query, so the header never shows a placeholder while that one loads.
+  const headerLabel = listLabel({
+    name: list?.name,
+    isOwn: list?.owner_id === user?.id,
+    ownerName: members.find((member) => member.user_id === list?.owner_id)?.first_name,
+  }, t);
+
   return (
-    <div
-      dir={isRTL ? 'rtl' : 'ltr'}
-      className="app-bg min-h-screen"
-      /* Room for the composer and a gap, off its measured height so it stays
-         right when the keyboard changes it. */
-      style={{ paddingBottom: `calc(var(${DOCK_HEIGHT_VAR}, 64px) + env(safe-area-inset-bottom) + 24px)` }}
-    >
-      <div className="mx-auto w-full max-w-6xl px-3 pt-[env(safe-area-inset-top)] sm:px-5 lg:px-6">
-
-        <GroceryToolbar
-          activeListLabel={
-            list?.name?.trim()
-            || (activeList ? listLabel(activeList, t) : t('lists.defaultName'))
-          }
-          onSwitchList={hasMultiple ? () => setListsOpen(true) : undefined}
-          onShare={() => setShareOpen(true)}
-          onHistory={() => setHistory(true)}
-          onProfile={() => navigate('/profile')}
-          profilePicture={resolveAvatar(myProfile) || me.avatar}
-          profileName={me.name}
-          invitationCount={myInvitations.length}
-          statusLine={statusLine}
-          progress={progress}
-          showProgress={!isEmpty}
-          t={t}
-        />
-
-        <div className="pt-2 lg:flex lg:items-start lg:gap-6">
+    <>
+      <ListShell
+        dir={isRTL ? 'rtl' : 'ltr'}
+        measureDock={measureDock}
+        header={(
+          <GroceryToolbar
+            activeListLabel={headerLabel}
+            // Always: the switcher is also where a new list is made.
+            onSwitchList={() => setListsOpen(true)}
+            onShare={() => setShareOpen(true)}
+            onHistory={() => setHistory(true)}
+            onProfile={() => navigate('/profile')}
+            profilePicture={resolveAvatar(myProfile) || me.avatar}
+            profileName={me.name}
+            invitationCount={myInvitations.length}
+            statusLine={statusLine}
+            progress={progress}
+            showProgress={!isEmpty}
+            t={t}
+          />
+        )}
+        dock={<GroceryQuickAdd ref={quickAddRef} onAdd={quickAdd} onExpand={expandDraft} />}
+      >
+        <div className="lg:flex lg:items-start lg:gap-6">
 
           {/* ── Main column ──────────────────────────────────────── */}
           <div className="min-w-0 flex-1">
@@ -449,25 +508,11 @@ export default function ListPage() {
             </div>
           </aside>
         </div>
-      </div>
+      </ListShell>
 
-      {/* ── Quick add — docked, mobile only ────────────────────────────
-          Where the floating "+" used to be, doing the job it only pointed at.
-          Always present: the empty list's own call to action focuses it. */}
-      <div
-        ref={measureDock}
-        className="fixed inset-x-0 z-40 px-3 sm:px-5 lg:hidden"
-        style={{
-          // With the keyboard up the bar sits on the keyboard; without it, on
-          // the home indicator.
-          bottom: keyboardInset > 0
-            ? `${keyboardInset + 8}px`
-            : 'calc(env(safe-area-inset-bottom) + 8px)',
-        }}
-      >
-        <GroceryQuickAdd ref={quickAddRef} onAdd={quickAdd} onExpand={expandDraft} />
-      </div>
-
+      {/* The sheets live outside the frame: the frame is translated while the
+          keyboard is up, and a transform would make it the containing block
+          for their `position: fixed`. */}
       <GroceryItemSheet
         isOpen={sheetOpen}
         onClose={closeSheet}
@@ -503,7 +548,10 @@ export default function ListPage() {
         activeListId={activeListId}
         onSwitch={handleSwitchList}
         busyId={switchingTo}
+        onCreate={handleCreateList}
+        onRename={handleRenameList}
+        onArchive={handleArchiveList}
       />
-    </div>
+    </>
   );
 }

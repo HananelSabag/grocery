@@ -9,7 +9,6 @@ import { useTranslation, useLanguage } from '../i18n';
 import { signOut } from '../lib/supabase';
 import { useGroceryList } from '../hooks/useGroceryList';
 import { useHouseholdStats } from '../hooks/useHouseholdStats';
-import { useRenameList } from '../hooks/useSharing';
 import { useIsAdmin } from '../hooks/useAdmin';
 import { useMyProfile } from '../hooks/useMyProfile';
 import { useAvatarUpload } from '../hooks/useAvatar';
@@ -54,7 +53,6 @@ export default function ProfilePage() {
   const me = useProfile();
   const { list, members, role } = useGroceryList();
   const { data: stats } = useHouseholdStats(list?.id);
-  const renameList = useRenameList();
   const isAdmin = useIsAdmin();
   const { data: myProfile } = useMyProfile();
   const avatar = useAvatarUpload();
@@ -63,15 +61,10 @@ export default function ProfilePage() {
   // The row's uploaded picture wins; the token's Google one is the fallback.
   const picture = resolveAvatar(myProfile) || me.avatar;
 
-  const [name, setName] = useState('');
   const [shareOpen, setShareOpen] = useState(false);
 
   const isOwner = role === 'owner';
   const BackIcon = language === 'he' ? ArrowRight : ArrowLeft;
-
-  const field = 'w-full rounded-xl border border-gray-200/70 bg-white/60 px-4 py-2.5 text-gray-900 ' +
-    'placeholder:text-gray-400 focus:border-brand-500 focus:outline-none focus:ring-2 ' +
-    'focus:ring-brand-500/20 dark:border-gray-700/60 dark:bg-gray-800/40 dark:text-gray-100';
 
   const segment = (active) => cn(
     'relative min-h-[44px] flex-1 rounded-xl px-2 text-[13px] font-bold transition-all',
@@ -229,46 +222,6 @@ export default function ProfilePage() {
           ))}
         </div>
       </Section>
-
-      {/* A nickname, not a required name. Most people have one list and never
-          need it; it earns its place the moment a second one arrives and both
-          would otherwise be called the same thing. */}
-      {isOwner && list && (
-        <Section title={t('lists.nickname')}>
-          <div className="p-3">
-            <div className="flex gap-2">
-              <input
-                value={name}
-                onChange={(event) => setName(event.target.value)}
-                placeholder={list.name?.trim() || t('lists.defaultName')}
-                // Long enough for anything meant seriously, short enough that
-                // the header stays a header. It truncates beyond this anyway.
-                maxLength={40}
-                className={cn(field, 'truncate')}
-              />
-              <button
-                type="button"
-                disabled={name.trim() === (list.name ?? '').trim() || renameList.isPending}
-                onClick={() => renameList.mutate(
-                  { listId: list.id, name },
-                  { onSuccess: () => setName('') }
-                )}
-                className={cn(
-                  'min-h-[44px] shrink-0 rounded-xl px-4 font-bold text-white transition-all',
-                  name.trim() !== (list.name ?? '').trim() && !renameList.isPending
-                    ? 'gradient-action gradient-glow active:scale-95'
-                    : 'bg-gray-200/60 text-gray-400 dark:bg-gray-700/50 dark:text-gray-600'
-                )}
-              >
-                {t('common.save')}
-              </button>
-            </div>
-            <p className="mt-1.5 px-1 text-[11px] leading-snug text-gray-400 dark:text-gray-500">
-              {t('lists.nicknameHint')}
-            </p>
-          </div>
-        </Section>
-      )}
 
       {/* Only shown to an admin — but showing it is all this does. Every query
           behind it re-checks in the database. */}

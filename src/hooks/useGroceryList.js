@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { keepPreviousData, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
 import { resolveAvatar } from '../lib/helpers';
@@ -63,6 +63,10 @@ export function useGroceryList() {
     // Membership and the open trip change on the order of days, so this does
     // not need re-asking every time the window is focused.
     staleTime: 5 * 60_000,
+    // Switching lists changes this key. Holding the list already on screen
+    // until the next one arrives keeps the page from dropping to the splash
+    // screen mid-switch, and taking the open switcher down with it.
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       // `ensure_list` resolves through membership and creates nothing that
       // already exists, so it is safe to call on every load — and it is what
@@ -118,6 +122,7 @@ export function useGroceryList() {
   const itemsQuery = useQuery({
     queryKey: groceryKeys.items(tripId),
     enabled: !!tripId,
+    placeholderData: keepPreviousData,
     queryFn: async () => {
       // This used to embed the adder's and the buyer's profile on every row.
       // Nothing has ever displayed either of them — not here and not in the
@@ -380,9 +385,16 @@ export function useGroceryList() {
     return { carriedOver };
   }, [tripId, itemsQuery.data, fail, queryClient]);
 
-  const switchList = useCallback(async (id) => {
+  /**
+   * Point the page at another list, and return at once. The new list runs
+   * under its own query keys, so there is nothing here worth waiting on:
+   * the page watches `isSwitching`, and the list already on screen stays
+   * there until the next one has actually arrived. This used to await
+   * every query in the app refetching.
+   */
+  const switchList = useCallback((id) => {
     setActiveList(id);
-    await queryClient.invalidateQueries();
+    queryClient.invalidateQueries({ queryKey: ['grocery', 'history'] });
     return true;
   }, [setActiveList, queryClient]);
 
@@ -440,6 +452,9 @@ export function useGroceryList() {
     // screen is loading while either of them has never resolved.
     isLoading: contextQuery.isLoading || itemsQuery.isLoading,
     isError: contextQuery.isError || itemsQuery.isError,
+    // True while a switch is in flight and the page is still showing the list
+    // it is switching away from.
+    isSwitching: contextQuery.isPlaceholderData || itemsQuery.isPlaceholderData,
     refetch,
 
     list: contextQuery.data?.list ?? null,

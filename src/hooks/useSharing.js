@@ -236,17 +236,21 @@ export function useGrocerySharing() {
     onSuccess: () => { forgetCurrentList(); invalidate(); },
   });
 
+  /**
+   * Stop sharing: everyone but the owner is removed and the code changes, so
+   * nobody walks back in with the one they already have. The owner stays on the
+   * list, with its history.
+   *
+   * This used to archive the list — hiding it from its owner as well, the
+   * opposite of what its own confirmation promised — and then moved the owner
+   * off to some other list.
+   */
   const disbandMutation = useMutation({
     mutationFn: async (listId) => {
-      // Archived, not deleted: the history of what the household bought is
-      // worth more than the row, and a disband is easy to regret.
-      const { error } = await supabase
-        .from('lists')
-        .update({ archived_at: new Date().toISOString() })
-        .eq('id', listId);
+      const { error } = await supabase.rpc('stop_sharing', { p_list_id: listId });
       if (error) throw { error: { code: 'GROCERY_OWNER_ONLY' } };
     },
-    onSuccess: () => { forgetCurrentList(); invalidate(); },
+    onSuccess: invalidate,
   });
 
   const run = useCallback(async (mutation, arg) => {
@@ -353,5 +357,55 @@ export function useRotateJoinCode() {
       return data;
     },
     onSuccess: () => queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts }),
+  });
+}
+
+/* ── More than one list ───────────────────────────────────────────────────── */
+
+/**
+ * Make another list — for a trip, a party, anything kept apart from the weekly
+ * shop — and land on it. The caller names it, falling back to a numbered
+ * default in the user's own language; the database refuses an unnamed one.
+ */
+export function useCreateList() {
+  const queryClient = useQueryClient();
+  const setActiveList = useActiveList((s) => s.setListId);
+
+  return useMutation({
+    mutationFn: async (name) => {
+      const { data, error } = await supabase.rpc('create_list', { p_name: name });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (listId) => {
+      if (listId) setActiveList(listId);
+      queryClient.invalidateQueries({ queryKey: ['grocery', 'lists'] });
+    },
+  });
+}
+
+/**
+ * Remove a list. Archived rather than deleted, like everything else here: what a
+ * household bought is worth more than the row. If it was the list on screen,
+ * the page moves to another one.
+ */
+export function useArchiveList() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (listId) => {
+      const { error } = await supabase
+        .from('lists').update({ archived_at: new Date().toISOString() }).eq('id', listId);
+      if (error) throw error;
+    },
+    onSuccess: (_, listId) => {
+      const { listId: chosen, setListId } = useActiveList.getState();
+      if (String(chosen) === String(listId)) setListId(null);
+      // Refetching the context is what moves the page: ensure_list skips an
+      // archived list, so it answers with the next one this user is on.
+      queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts });
+      queryClient.invalidateQueries({ queryKey: groceryKeys.allItems });
+      queryClient.invalidateQueries({ queryKey: ['grocery', 'lists'] });
+    },
   });
 }

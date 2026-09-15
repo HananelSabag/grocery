@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
-import { api } from '../lib/api';
 import { useAuth } from '../stores/auth';
 import { useActiveList } from '../stores/activeList';
 import { groceryKeys } from './useGroceryList';
@@ -10,11 +9,12 @@ import { useToast } from './useToast';
 import { useTranslation } from '../i18n';
 
 /**
- * Invitations and membership.
+ * Membership, the sharing link, and lists.
  *
- * Same surface as SpendWise's `useGrocerySharing`, so the sheets ported from
- * there call it unchanged — only what is underneath changed, from an Express
- * API to Supabase.
+ * Sharing is a permanent link carrying the list's code; see
+ * supabase/migrations/0010_link_sharing.sql. The email invitations and
+ * one-time invitation tokens that came before it are gone from here —
+ * /invite/:token still resolves, for links that were already sent.
  */
 
 /**
@@ -98,8 +98,7 @@ export function useGrocerySharing() {
     // until something else happened to refetch.
     queryClient.invalidateQueries({ queryKey: groceryKeys.allContexts });
     queryClient.invalidateQueries({ queryKey: groceryKeys.allItems });
-    queryClient.invalidateQueries({ queryKey: ['grocery', 'my-invitations', userId] });
-    // Accepting, leaving and disbanding change WHICH lists exist for this
+    // Joining, leaving and stopping a share change WHICH lists exist for this
     // user, not just what is on one of them.
     queryClient.invalidateQueries({ queryKey: ['grocery', 'lists', userId] });
   }, [queryClient, userId]);
@@ -120,48 +119,6 @@ export function useGrocerySharing() {
     queryClient.removeQueries({ queryKey: groceryKeys.allItems });
     queryClient.removeQueries({ queryKey: ['grocery', 'history', userId] });
   }, [queryClient, setActiveList, userId]);
-
-  const inviteMutation = useMutation({
-    mutationFn: async (email) => {
-      const result = await api.grocery.invite(email);
-      if (!result.success) throw result;
-      return result.data;
-    },
-    onSuccess: invalidate,
-  });
-
-  const respondMutation = useMutation({
-    mutationFn: async ({ token, action }) => {
-      if (action === 'accept') {
-        const { data, error } = await supabase.rpc('accept_invitation', { p_token: token });
-        if (error) throw { error: { code: 'GROCERY_INVITE_NOT_FOUND' } };
-        return { listId: data };
-      }
-      const { error } = await supabase
-        .from('invitations')
-        .update({ status: 'declined', responded_at: new Date().toISOString() })
-        .eq('token', token);
-      if (error) throw { error: { code: 'GROCERY_INVITE_NOT_FOUND' } };
-      return {};
-    },
-    onSuccess: (data, variables) => {
-      // Accepting lands you on the list you just joined.
-      if (variables?.action === 'accept') {
-        forgetCurrentList();
-        if (data?.listId) setActiveList(data.listId);
-      }
-      invalidate();
-    },
-  });
-
-  const cancelInviteMutation = useMutation({
-    mutationFn: async (email) => {
-      const result = await api.grocery.cancelInvite(email);
-      if (!result.success) throw result;
-      return result.data;
-    },
-    onSuccess: invalidate,
-  });
 
   /** `memberId` is the list_members row id, not the user's. */
   const removeMemberMutation = useMutation({
@@ -214,15 +171,10 @@ export function useGrocerySharing() {
   }, [reportFailure]);
 
   return {
-    invite: (email) => run(inviteMutation, email),
-    respond: (token, action) => run(respondMutation, { token, action }),
-    cancelInvite: (email) => run(cancelInviteMutation, email),
     removeMember: (memberId) => run(removeMemberMutation, memberId),
     leaveList: (listId) => run(leaveMutation, listId),
     disband: (listId) => run(disbandMutation, listId),
 
-    isInviting: inviteMutation.isPending,
-    isResponding: respondMutation.isPending,
     isDisbanding: disbandMutation.isPending,
   };
 }

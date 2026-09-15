@@ -9,16 +9,14 @@ import { supabase } from './supabase';
  * entry when a fetch fails. Rewriting them to throw instead would mean
  * rewriting all of that too, so the envelope is kept and this module is what
  * produces it.
+ *
+ * Sharing used to live here too — one-time invitation tokens and email
+ * invitations, written straight into the invitations table. Sharing is a
+ * permanent link now (hooks/useSharing.js), and that code is gone.
  */
 
 const ok   = (data) => ({ success: true, data });
 const fail = (code) => ({ success: false, error: { code } });
-
-/** The caller's list. Every share operation is scoped to it. */
-const currentListId = async () => {
-  const { data, error } = await supabase.rpc('ensure_list');
-  return error ? null : data;
-};
 
 export const api = {
   grocery: {
@@ -58,99 +56,5 @@ export const api = {
      * Restoring it would mean a Supabase Edge Function doing the fetch.
      */
     scrapeUrl: async () => fail('GROCERY_SCRAPE_UNSUPPORTED'),
-
-    // ─── Sharing ────────────────────────────────────────────────────────────
-    // One recipient-less link per list, created on demand. An invitation row
-    // with no email is exactly that: a token anybody holding the link can
-    // redeem, until it is revoked or expires.
-
-    getShareLink: async () => {
-      const listId = await currentListId();
-      if (!listId) return fail('GROCERY_NO_LIST');
-
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('token')
-        .eq('list_id', listId)
-        .eq('status', 'pending')
-        .is('invitee_email', null)
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) return fail('GROCERY_LINK_READ');
-      return ok({ inviteUrl: data ? inviteUrl(data.token) : null });
-    },
-
-    createShareLink: async () => {
-      const listId = await currentListId();
-      if (!listId) return fail('GROCERY_NO_LIST');
-
-      const { data: auth } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from('invitations')
-        .insert({ list_id: listId, inviter_id: auth?.user?.id, invitee_email: null })
-        .select('token')
-        .single();
-
-      // The insert policy is owner-only, so this is also where a member who
-      // somehow reached the button is turned away.
-      if (error) return fail('GROCERY_OWNER_ONLY');
-      return ok({ inviteUrl: inviteUrl(data.token) });
-    },
-
-    revokeShareLink: async () => {
-      const listId = await currentListId();
-      if (!listId) return fail('GROCERY_NO_LIST');
-
-      const { error } = await supabase
-        .from('invitations')
-        .update({ status: 'revoked', responded_at: new Date().toISOString() })
-        .eq('list_id', listId)
-        .eq('status', 'pending')
-        .is('invitee_email', null);
-
-      if (error) return fail('GROCERY_OWNER_ONLY');
-      return ok({});
-    },
-
-    invite: async (email) => {
-      const listId = await currentListId();
-      if (!listId) return fail('GROCERY_NO_LIST');
-
-      const { data: auth } = await supabase.auth.getUser();
-      const { data, error } = await supabase
-        .from('invitations')
-        .insert({
-          list_id: listId,
-          inviter_id: auth?.user?.id,
-          invitee_email: email.trim().toLowerCase(),
-        })
-        .select('token')
-        .single();
-
-      if (error) return fail('GROCERY_OWNER_ONLY');
-      return ok({ inviteUrl: inviteUrl(data.token) });
-    },
-
-    cancelInvite: async (email) => {
-      const listId = await currentListId();
-      if (!listId) return fail('GROCERY_NO_LIST');
-
-      const { error } = await supabase
-        .from('invitations')
-        .update({ status: 'revoked', responded_at: new Date().toISOString() })
-        .eq('list_id', listId)
-        .eq('status', 'pending')
-        .eq('invitee_email', email.trim().toLowerCase());
-
-      if (error) return fail('GROCERY_OWNER_ONLY');
-      return ok({});
-    },
   },
 };
-
-function inviteUrl(token) {
-  return `${window.location.origin}/invite/${token}`;
-}

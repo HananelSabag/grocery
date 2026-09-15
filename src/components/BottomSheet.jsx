@@ -135,7 +135,7 @@ const BottomSheet = ({
             {(title || true) && (
               <div className="flex-shrink-0 flex items-center justify-between px-4 pb-3 border-b border-gray-100 dark:border-gray-800">
                 {title ? (
-                  <h2 id={titleId} className="text-base font-semibold text-gray-900 dark:text-white">
+                  <h2 id={titleId} className="min-w-0 text-base font-semibold text-gray-900 dark:text-white">
                     {title}
                   </h2>
                 ) : (

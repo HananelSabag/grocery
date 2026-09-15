@@ -94,21 +94,25 @@ export default {
   },
 
   /**
-   * Sharing moved from a one-time link to a standing code, so the link's own
-   * wording stays in the ported file and the code's is added here.
+   * One permanent link per list. The ported file keeps its old wording; what
+   * changed is overridden here.
    */
   share: {
     ...grocery.share,
-    // Sharing is a link, and only a link: send it or copy it. No code on screen.
+    // Sharing is a link, and only a link: copy it from its box or send it. No code on screen.
     send: 'Send the link',
+    copy: 'Copy',
     copyLink: 'Copy link',
-    linkHint: 'Anyone who gets the link can join this list. It is permanent — it works in a group chat, and next month.',
+    copiedShort: 'Copied',
+    linkHint: 'Anyone who gets the link can join this list.',
     message: 'Join our shopping list',
     messageNamed: 'Join our shopping list: {{name}}',
     replaceLink: 'Replace link',
-    replaceLinkConfirm: 'Yes, replace it',
-    replaceLinkWarning: 'The current link stops working, even for people who already have it. Anyone already on the list stays.',
+    replaceLinkTip: 'The link is permanent. If it reached someone it should not have, or you removed someone and do not want them back, replace it — the old one stops working. Everyone already on the list stays.',
+    replaceLinkConfirm: 'Replace the link',
     linkReplaced: 'Link replaced',
+    manage: 'Manage this list',
+    removed: '{{name}} is no longer on the list. To stop them coming back with the same link, replace it.',
     // "Stop sharing" used to archive the whole list, for its owner too. It now
     // does what this sentence says, so the sentence can finally be true.
     disband: 'Stop sharing',

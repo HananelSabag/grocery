@@ -33,11 +33,13 @@ Mobile-first PWA · Hebrew & English (RTL/LTR) · Google sign-in · no backend
   of it.
 - **Photos, links and notes** for the item that needs them: a picture matters
   for the one specific yoghurt, not for bread.
-- **A link, not an invitation.** Every list has one permanent link: send it or
-  copy it. It is not used up and does not expire, so it works in a group chat
-  and for whoever it gets forwarded to; replacing it is the only revocation, and
-  it is one button. Someone who has never used the app signs in with Google from
-  the link and is brought straight back to it.
+- **A link, not an invitation.** Every list has one permanent link, in a box
+  with a copy button, and a button under it that sends it. It is not used up and
+  does not expire, so it works in a group chat and for whoever it gets forwarded
+  to. Replacing it is the only revocation: a small icon at the end of the box,
+  whose tooltip says what replacing breaks before anything is replaced. Someone
+  who has never used the app signs in with Google from the link and is brought
+  straight back to it.
 - **More than one list.** The weekly shop, and a list for Eilat made ahead of
   time. The header always opens the switcher, which is where a list is made,
   renamed and deleted; each one says what it is called and, when it is not

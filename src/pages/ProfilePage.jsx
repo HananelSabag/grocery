@@ -263,6 +263,9 @@ export default function ProfilePage() {
         members={members}
         role={role}
         currentUserId={me.id}
+        // Without it the sheet had no link to show, and opened from here with
+        // nothing to share.
+        list={list}
       />
     </div>
   );

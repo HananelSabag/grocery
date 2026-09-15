@@ -23,7 +23,6 @@ export default function GroceryToolbar({
   onProfile,
   profilePicture,
   profileName,
-  invitationCount = 0,
   statusLine,
   progress,
   showProgress,
@@ -93,11 +92,6 @@ export default function GroceryToolbar({
 
         <button type="button" onClick={onShare} aria-label={t('share.title')} className={cn(iconButton, 'lg:hidden')}>
           <Users className="h-4 w-4" />
-          {invitationCount > 0 && (
-            <span className="absolute -end-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">
-              {invitationCount}
-            </span>
-          )}
         </button>
 
         {/* Standalone, this app has no surrounding shell to hang settings off,

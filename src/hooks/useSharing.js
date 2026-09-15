@@ -2,7 +2,6 @@ import { useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { supabase } from '../lib/supabase';
-import { resolveAvatar } from '../lib/helpers';
 import { api } from '../lib/api';
 import { useAuth } from '../stores/auth';
 import { useActiveList } from '../stores/activeList';
@@ -17,53 +16,6 @@ import { useTranslation } from '../i18n';
  * there call it unchanged — only what is underneath changed, from an Express
  * API to Supabase.
  */
-
-/** Invitations addressed to me, waiting to be answered. */
-export function useMyGroceryInvitations() {
-  const user = useAuth((s) => s.user);
-  const userId = user?.id;
-  const email = user?.email;
-
-  const query = useQuery({
-    queryKey: ['grocery', 'my-invitations', user?.id],
-    enabled: !!email,
-    staleTime: 30 * 1000,
-    refetchInterval: 60 * 1000,
-    refetchIntervalInBackground: false,
-    refetchOnWindowFocus: true,
-    retry: 1,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('invitations')
-        .select('id, token, list_id, inviter_id, created_at, expires_at, lists:list_id ( name ), profiles:inviter_id ( display_name, avatar_url, custom_avatar_url )')
-        .eq('status', 'pending')
-        .gt('expires_at', new Date().toISOString())
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      // The policy also returns the owner's own outgoing link invitations,
-      // because they are allowed to manage them — but a link you created is
-      // not an invitation *to* you, and showing it as one puts a "somebody
-      // invited you" banner on your own screen.
-      return (data ?? [])
-        .filter((row) => row.inviter_id !== userId)
-        .map((row) => ({
-        ...row,
-        list_name: row.lists?.name ?? null,
-        inviter_name: row.profiles?.display_name ?? null,
-        inviter_avatar: resolveAvatar(row.profiles),
-      }));
-    },
-  });
-
-  return {
-    invitations: query.data ?? [],
-    count: (query.data ?? []).length,
-    isLoading: query.isLoading,
-    refetch: query.refetch,
-  };
-}
 
 /**
  * The lists this user can open.

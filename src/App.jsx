@@ -1,7 +1,8 @@
 import React, { Suspense, lazy, useEffect, useState } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router-dom';
 
 import { checkForUpdate } from './lib/pwa';
+import { takeReturnTo } from './lib/returnTo';
 import { useAuth } from './stores/auth';
 import SignIn from './pages/SignIn';
 import Splash from './components/Splash';
@@ -20,9 +21,23 @@ const AdminPage   = lazy(() => import('./pages/AdminPage'));
  * `ready` is checked before `user`: until Supabase has read the stored session,
  * "no user" means "we haven't looked", and rendering SignIn on that would flash
  * the sign-in screen at a signed-in user on every reload.
+ *
+ * This is also where Google puts people down after signing in — always "/", see
+ * lib/returnTo.js — so it is where they are sent on to wherever they were when
+ * they started. For someone who followed an invitation link, that is the
+ * invitation, and without this step they never saw it again.
  */
 const Protected = ({ children }) => {
   const { user, ready } = useAuth();
+  const navigate = useNavigate();
+  const { pathname, search } = useLocation();
+
+  useEffect(() => {
+    if (!ready || !user) return;
+    const target = takeReturnTo();
+    if (target && target !== `${pathname}${search}`) navigate(target, { replace: true });
+  }, [ready, user, pathname, search, navigate]);
+
   if (!ready) return <Splash />;
   if (!user) return <SignIn />;
   return children;

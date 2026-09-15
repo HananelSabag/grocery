@@ -137,7 +137,9 @@ Re-run it after touching a policy. It wraps everything in a rollback.
   project's Site URL. So `SignIn` writes the current path down first
   (`lib/returnTo.js`) and `Protected` sends the person on afterwards. Take that
   step out and every new person who follows a link lands on their own empty list
-  and never joins — which is exactly what happened.
+  and never joins — which is exactly what happened to the first people sent one.
+  `src/__tests__/joinReturn.test.jsx` holds the whole round trip, and fails
+  without that step.
 
 ## How a deploy reaches a phone
 

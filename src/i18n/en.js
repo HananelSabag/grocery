@@ -99,19 +99,20 @@ export default {
    */
   share: {
     ...grocery.share,
-    codeTitle: 'List code',
-    codeHint: 'Anyone with the code can join. It does not expire — if you want to shut it off, change it.',
-    copyCode: 'Copy the code',
-    send: 'Send',
-    message: 'Join our shopping list. Code: {{code}}',
-    changeCode: 'Change',
-    changeCodeConfirm: 'Sure?',
-    changeCodeWarning: 'The old code stops working, and so do links sent with it. Anyone already on the list stays.',
-    codeChanged: 'Code changed',
+    // Sharing is a link, and only a link: send it or copy it. No code on screen.
+    send: 'Send the link',
+    copyLink: 'Copy link',
+    linkHint: 'Anyone who gets the link can join this list. It is permanent — it works in a group chat, and next month.',
+    message: 'Join our shopping list',
+    messageNamed: 'Join our shopping list: {{name}}',
+    replaceLink: 'Replace link',
+    replaceLinkConfirm: 'Yes, replace it',
+    replaceLinkWarning: 'The current link stops working, even for people who already have it. Anyone already on the list stays.',
+    linkReplaced: 'Link replaced',
     // "Stop sharing" used to archive the whole list, for its owner too. It now
     // does what this sentence says, so the sentence can finally be true.
     disband: 'Stop sharing',
-    disbandConfirm: 'Remove everyone from this list? The code will change, and the list stays with you.',
+    disbandConfirm: 'Remove everyone from this list? The link will change, and the list stays with you.',
   },
 
   /**
@@ -138,14 +139,15 @@ export default {
     archived: 'List deleted',
   },
 
-  /** Joining somebody else's list — by code, or by a link carrying one. */
+  /** Joining somebody else's list, through a link. */
   join: {
-    title: 'Join a list',
-    placeholder: '6-character code',
-    action: 'Join',
-    joined: 'You joined the list',
-    notFound: 'No list with that code',
-    notFoundHint: 'Worth asking for the code again — it may have been changed.',
+    // The sign-in screen when arriving from a link: someone who has never used
+    // the app needs to know they are in the right place, not at a generic login.
+    signInTitle: "You're invited to a shared shopping list",
+    signInSubtitle: 'To join, sign in with Google. That is all — no password, no sign-up form.',
+    embeddedBrowser: "Google won't sign anyone in from inside this app's browser. Copy the link and open it in Chrome or Safari.",
+    notFound: 'This link no longer works',
+    notFoundHint: 'It may have been replaced — worth asking for a new one.',
     toMyList: 'To my list',
     invitedTo: "You're invited to",
     memberCount: '{{count}} people on it',

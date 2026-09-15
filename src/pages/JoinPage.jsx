@@ -4,43 +4,60 @@ import { Loader2, ShoppingBasket, Users } from 'lucide-react';
 
 import { lookupListByCode, useJoinList } from '../hooks/useSharing';
 import { useAuth } from '../stores/auth';
+import { useActiveList } from '../stores/activeList';
+import { takeReturnTo } from '../lib/returnTo';
 import { useTranslation } from '../i18n';
 import Logo from '../components/Logo';
 import Splash from '../components/Splash';
 import SignIn from './SignIn';
 
 /**
- * Landing on a shared code, from a link.
+ * Where a shared link lands.
  *
- * It asks before joining rather than joining on arrival. A link gets forwarded
- * — that is the point of a standing code — and the person who ends up tapping
- * it should see whose shopping list they are about to be added to, by name,
- * before they are on it.
+ * Signed out — the usual case for someone the link was sent to — it is a sign-in
+ * screen that says they have been invited. Google always returns people to "/",
+ * so the sign-in screen writes this address down first and the app brings them
+ * back here afterwards (lib/returnTo.js). Without that, a new person signed in,
+ * landed on the empty list sign-up had just made for them, and never joined.
  *
- * Sign-in comes first, because there is nobody to add until there is an
- * account. Google leaves and re-enters the page, so the code has to survive a
- * full reload: it is in the URL, which it does.
+ * Signed in, it names the list before joining it. A link gets forwarded — that
+ * is what a permanent link is for — and whoever ends up tapping it should see
+ * whose shopping list they are about to be added to. Somebody already on the
+ * list is simply taken to it.
  */
 export default function JoinPage() {
   const { code } = useParams();
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { user, ready } = useAuth();
+  const setActiveList = useActiveList((s) => s.setListId);
   const join = useJoinList();
 
   const [found, setFound] = useState(undefined); // undefined = still looking
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
-    if (!ready || !user) return;
-    let cancelled = false;
+    if (!ready || !user) return undefined;
 
+    // Arrived. Whatever was written down on the way out has done its job, and
+    // must not send the person back here the next time they open the app.
+    takeReturnTo();
+
+    let cancelled = false;
     lookupListByCode(code)
-      .then((row) => { if (!cancelled) setFound(row); })
+      .then((row) => {
+        if (cancelled) return;
+        if (row?.already_member) {
+          setActiveList(row.list_id);
+          navigate('/', { replace: true });
+          return;
+        }
+        setFound(row);
+      })
       .catch(() => { if (!cancelled) setFound(null); });
 
     return () => { cancelled = true; };
-  }, [ready, user, code]);
+  }, [ready, user, code, navigate, setActiveList]);
 
   const confirm = useCallback(async () => {
     try {
@@ -52,7 +69,7 @@ export default function JoinPage() {
   }, [join, code, navigate]);
 
   if (!ready) return <Splash />;
-  if (!user) return <SignIn />;
+  if (!user) return <SignIn intent="join" />;
 
   const shell = (children) => (
     <div className="app-bg flex min-h-screen flex-col items-center justify-center gap-5 px-6 text-center">
@@ -97,7 +114,7 @@ export default function JoinPage() {
 
         <p className="mt-1 text-lg font-bold text-gray-900 dark:text-gray-50">
           {found.list_name?.trim()
-            || t('lists.someones', { name: found.owner_name || t('lists.someone') })}
+            || t('lists.someones', { name: (found.owner_name || '').trim().split(/\s+/)[0] || t('lists.someone') })}
         </p>
 
         <p className="mt-2 flex items-center justify-center gap-1.5 text-[12px] text-gray-400 dark:text-gray-500">

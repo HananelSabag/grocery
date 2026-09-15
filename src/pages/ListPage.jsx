@@ -11,10 +11,10 @@
  * see — so an iPhone keyboard shortens the page instead of dragging it away.
  */
 
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { AnimatePresence, motion } from 'framer-motion';
-import { AlertCircle, ChevronDown, Flag, Plus, ShoppingCart, Users } from 'lucide-react';
+import { AlertCircle, ChevronDown, Flag, Plus, ShoppingCart } from 'lucide-react';
 
 import { cn, resolveAvatar } from '../lib/helpers';
 import { useTranslation } from '../i18n';
@@ -23,7 +23,7 @@ import { useMyProfile } from '../hooks/useMyProfile';
 import { useToast } from '../hooks/useToast';
 import { useGroceryList } from '../hooks/useGroceryList';
 import {
-  useArchiveList, useCreateList, useGroceryLists, useMyGroceryInvitations, useRenameList,
+  useArchiveList, useCreateList, useGroceryLists, useRenameList,
 } from '../hooks/useSharing';
 import { useBottomInset } from '../hooks/useBottomInset';
 import { hasLearnedGesture, onGestureLearned } from '../lib/gestureHint';
@@ -63,7 +63,6 @@ export default function ListPage() {
     claimItem, releaseItem, completeTrip, switchList,
   } = useGroceryList();
 
-  const { invitations: myInvitations } = useMyGroceryInvitations();
   const { lists } = useGroceryLists();
   const { mutateAsync: createList } = useCreateList();
   const { mutateAsync: renameList } = useRenameList();
@@ -213,14 +212,6 @@ export default function ListPage() {
     sectionRefs.current[key]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }, []);
 
-  const invitationBanner = useMemo(() => {
-    if (myInvitations.length === 0) return null;
-    return {
-      name: myInvitations[0].inviter_name || '',
-      extra: myInvitations.length - 1,
-    };
-  }, [myInvitations]);
-
   // Error before loading, and only when there is nothing on screen. A query
   // that keeps failing stays pending across its retry cycles, so checking
   // isLoading first showed a skeleton that never resolved. And a poll failing
@@ -277,7 +268,6 @@ export default function ListPage() {
             onProfile={() => navigate('/profile')}
             profilePicture={resolveAvatar(myProfile) || me.avatar}
             profileName={me.name}
-            invitationCount={myInvitations.length}
             statusLine={statusLine}
             progress={progress}
             showProgress={!isEmpty}
@@ -290,31 +280,6 @@ export default function ListPage() {
 
           {/* ── Main column ──────────────────────────────────────── */}
           <div className="min-w-0 flex-1">
-            {invitationBanner && (
-              <div className="mb-2.5">
-                <button
-                  type="button"
-                  onClick={() => setShareOpen(true)}
-                  className="glass glass-brand flex w-full items-center gap-3 rounded-2xl px-3 py-2.5 text-start"
-                >
-                  <Users className="h-4 w-4 shrink-0 text-brand-500" />
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-brand-900 dark:text-brand-200">
-                      {t('banner.invitation', { name: invitationBanner.name })}
-                    </span>
-                    {invitationBanner.extra > 0 && (
-                      <span className="block text-xs text-brand-600 dark:text-brand-300">
-                        {t('banner.invitationMore', { count: invitationBanner.extra })}
-                      </span>
-                    )}
-                  </span>
-                  <span className="shrink-0 text-xs font-bold text-brand-600 dark:text-brand-300">
-                    {t('banner.view')}
-                  </span>
-                </button>
-              </div>
-            )}
-
             {isEmpty ? (
               <div className="flex flex-col items-center justify-center px-8 py-14 text-center">
                 <span className="glass mb-4 flex h-14 w-14 items-center justify-center rounded-2xl text-brand-400">

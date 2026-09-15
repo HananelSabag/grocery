@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Check } from 'lucide-react';
+import { AlertTriangle, Check, Copy } from 'lucide-react';
 
 import { signInWithGoogle } from '../lib/supabase';
+import { rememberReturnTo } from '../lib/returnTo';
 import { useLanguage } from '../i18n';
 import { cn } from '../lib/helpers';
 import Logo from '../components/Logo';
@@ -17,23 +18,60 @@ const GoogleMark = () => (
   </svg>
 );
 
-export default function SignIn() {
+/**
+ * An in-app browser that Google refuses to sign anyone in from.
+ *
+ * Google blocks OAuth inside embedded web views ("disallowed_useragent"), and
+ * that is what Instagram, Facebook, Messenger, TikTok and the like open links in.
+ * A link sent there would lead a new person to a Google error page with no way
+ * forward. WhatsApp and Telegram open real browser tabs and sign in fine, so they
+ * are deliberately not on this list. Android marks a plain web view with "; wv)".
+ */
+const isEmbeddedBrowser = () => {
+  const ua = navigator.userAgent || '';
+  return /FBAN|FBAV|FB_IAB|FBIOS|Instagram|Messenger|LinkedInApp|TikTok|musical_ly|BytedanceWebview|Snapchat|Line\//i.test(ua)
+    || (/Android/i.test(ua) && /; wv\)/.test(ua));
+};
+
+/**
+ * The front door. With `intent="join"` it is the door someone arrives at from an
+ * invitation link, and says so — to a person who has never seen the app, a bare
+ * "sign in" screen after tapping a friend's link reads as the wrong page.
+ */
+export default function SignIn({ intent }) {
   const t = useLanguage((s) => s.t);
   const language = useLanguage((s) => s.language);
   const setLanguage = useLanguage((s) => s.setLanguage);
 
   const [busy, setBusy] = useState(false);
   const [failed, setFailed] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  const joining = intent === 'join';
+  const embedded = isEmbeddedBrowser();
 
   const start = async () => {
     setBusy(true);
     setFailed(false);
+    // Written down before leaving: Google always sends people back to "/", and
+    // an invitation link has to survive that. See lib/returnTo.js.
+    rememberReturnTo(`${window.location.pathname}${window.location.search}`);
     const { error } = await signInWithGoogle();
     if (error) {
       // The redirect never happened, so this component is still mounted and
       // has to say so itself.
       setBusy(false);
       setFailed(true);
+    }
+  };
+
+  const copyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2500);
+    } catch {
+      /* the address bar still has it */
     }
   };
 
@@ -65,11 +103,31 @@ export default function SignIn() {
           <Logo size={88} className="mx-auto mb-6 drop-shadow-xl" />
 
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-50">
-            {t('auth.signInTitle')}
+            {joining ? t('join.signInTitle') : t('auth.signInTitle')}
           </h1>
           <p className="mt-2 text-[15px] leading-relaxed text-gray-500 dark:text-gray-400">
-            {t('auth.signInSubtitle')}
+            {joining ? t('join.signInSubtitle') : t('auth.signInSubtitle')}
           </p>
+
+          {embedded && (
+            <div className="glass mt-6 rounded-2xl p-3 text-start">
+              <p className="flex gap-2 text-[13px] leading-snug text-amber-700 dark:text-amber-300">
+                <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+                {t('join.embeddedBrowser')}
+              </p>
+              <button
+                type="button"
+                onClick={copyLink}
+                className={cn(
+                  'mt-2.5 flex min-h-[40px] w-full items-center justify-center gap-2 rounded-xl text-[13px] font-bold transition active:scale-[0.98]',
+                  copied ? 'bg-emerald-600 text-white' : 'bg-white/70 text-gray-800 dark:bg-gray-800/70 dark:text-gray-100'
+                )}
+              >
+                {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                {copied ? t('share.copied') : t('share.copyLink')}
+              </button>
+            </div>
+          )}
 
           <button
             type="button"
@@ -80,6 +138,7 @@ export default function SignIn() {
               'border-gray-200 bg-white px-5 py-4 text-[15px] font-semibold text-gray-800',
               'shadow-sm transition active:scale-[0.98]',
               'dark:border-gray-700 dark:bg-gray-900 dark:text-gray-100',
+              embedded && 'mt-4',
               busy && 'pointer-events-none opacity-60'
             )}
           >

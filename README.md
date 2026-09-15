@@ -33,9 +33,11 @@ Mobile-first PWA · Hebrew & English (RTL/LTR) · Google sign-in · no backend
   of it.
 - **Photos, links and notes** for the item that needs them: a picture matters
   for the one specific yoghurt, not for bread.
-- **A code, not an invitation.** Every list has a six-character code that does
-  not expire and is not used up: read it out, send it, or send the link that
-  carries it. Replacing it is the only revocation, and it is one button.
+- **A link, not an invitation.** Every list has one permanent link: send it or
+  copy it. It is not used up and does not expire, so it works in a group chat
+  and for whoever it gets forwarded to; replacing it is the only revocation, and
+  it is one button. Someone who has never used the app signs in with Google from
+  the link and is brought straight back to it.
 - **More than one list.** The weekly shop, and a list for Eilat made ahead of
   time. The header always opens the switcher, which is where a list is made,
   renamed and deleted; each one says what it is called and, when it is not
@@ -124,6 +126,12 @@ Re-run it after touching a policy. It wraps everything in a rollback.
 - **`join_code` is readable off `lists` only by members.** An outsider resolves
   a code through `lookup_list_by_code`, which returns a household's name and
   nothing else. Asserted in `supabase/tests/rls.sql`.
+- **Sign-in always returns to "/", on purpose.** The Supabase project is shared,
+  and a deep `redirectTo` that is not on its allowlist silently becomes the
+  project's Site URL. So `SignIn` writes the current path down first
+  (`lib/returnTo.js`) and `Protected` sends the person on afterwards. Take that
+  step out and every new person who follows a link lands on their own empty list
+  and never joins — which is exactly what happened.
 
 ## How a deploy reaches a phone
 

@@ -539,3 +539,93 @@ end $p$;
 
 select * from probe_lists;
 rollback;
+
+
+-- ===========================================================================
+-- A new person following a link
+--
+-- Sharing is a link and nothing else, so the path a first-time visitor takes
+-- through it has to hold end to end: new links carry a long token, joining
+-- lands them on the list they were sent, the empty list sign-up made for them
+-- is put away so it does not sit beside the real one, and a second tap on the
+-- same link just takes them there. A person who has actually used their own list
+-- keeps it. Links sent before the tokens got longer keep working.
+--
+-- Self-contained, like the blocks above.
+--
+-- Expected: every line reads as its parenthesis says.
+-- ===========================================================================
+
+begin;
+
+insert into auth.users (id, instance_id, aud, role, email, encrypted_password,
+                        email_confirmed_at, created_at, updated_at,
+                        raw_app_meta_data, raw_user_meta_data)
+values
+  ('88888888-0000-0000-0000-000000000008','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','rls-h@test.local','x',now(),now(),now(),'{}','{"full_name":"Owner H"}'),
+  ('99999999-0000-0000-0000-000000000009','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','rls-g@test.local','x',now(),now(),now(),'{}','{"full_name":"New G"}'),
+  ('77777777-0000-0000-0000-000000000007','00000000-0000-0000-0000-000000000000',
+   'authenticated','authenticated','rls-k@test.local','x',now(),now(),now(),'{}','{"full_name":"Busy K"}');
+
+create temp table probe_link(check_name text, result text);
+grant select, insert on probe_link to authenticated;
+
+do $p$
+declare
+  h_claims text := '{"sub":"88888888-0000-0000-0000-000000000008","role":"authenticated","email":"rls-h@test.local"}';
+  g_claims text := '{"sub":"99999999-0000-0000-0000-000000000009","role":"authenticated","email":"rls-g@test.local"}';
+  k_claims text := '{"sub":"77777777-0000-0000-0000-000000000007","role":"authenticated","email":"rls-k@test.local"}';
+  h_list bigint; h_code text; g_home bigint; k_home bigint; k_trip bigint;
+  n int; r record; v bigint;
+begin
+  perform set_config('role', 'authenticated', true);
+
+  -- H owns a list; the token sign-up gave it is the long kind.
+  perform set_config('request.jwt.claims', h_claims, true);
+  select id, join_code into h_list, h_code
+  from grocery.lists where owner_id = '88888888-0000-0000-0000-000000000008';
+  insert into probe_link values ('new link token length', length(h_code) || ' (expect 12)');
+
+  -- G has just signed up by following H's link.
+  perform set_config('request.jwt.claims', g_claims, true);
+  select id into g_home from grocery.lists where owner_id = '99999999-0000-0000-0000-000000000009';
+
+  select * into r from grocery.lookup_list_by_code(lower(h_code));
+  insert into probe_link values ('before joining, already_member', r.already_member || ' (expect false)');
+
+  v := grocery.join_by_code(h_code);
+  insert into probe_link values ('join lands on the list that was shared', (v = h_list) || ' (expect true)');
+
+  select count(*) into n from grocery.lists where id = g_home and archived_at is not null;
+  insert into probe_link values ('untouched sign-up list put away', n || ' (expect 1)');
+
+  insert into probe_link values ('the new person now opens on',
+    case when grocery.ensure_list() = h_list then 'the shared list (expect)' else 'SOMETHING ELSE — BAD' end);
+
+  select * into r from grocery.lookup_list_by_code(h_code);
+  insert into probe_link values ('after joining, already_member', r.already_member || ' (expect true)');
+
+  v := grocery.join_by_code(h_code);
+  insert into probe_link values ('tapping the link again', (v = h_list) || ' (expect true, the same list)');
+
+  -- K has used their own list, so joining leaves it alone.
+  perform set_config('request.jwt.claims', k_claims, true);
+  select l.id, t.id into k_home, k_trip
+  from grocery.lists l
+  join grocery.trips t on t.list_id = l.id and t.status = 'active'
+  where l.owner_id = '77777777-0000-0000-0000-000000000007';
+
+  insert into grocery.items (trip_id, name, category_key, added_by)
+  values (k_trip, 'חלב', 'dairy_eggs', '77777777-0000-0000-0000-000000000007');
+
+  perform grocery.join_by_code(h_code);
+  select count(*) into n from grocery.lists where id = k_home and archived_at is null;
+  insert into probe_link values ('a list with items survives joining', n || ' (expect 1)');
+
+  perform set_config('role', 'postgres', true);
+end $p$;
+
+select * from probe_link;
+rollback;

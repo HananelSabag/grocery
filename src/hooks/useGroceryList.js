@@ -76,12 +76,15 @@ export function useGroceryList() {
       if (rpcError) throw rpcError;
 
       // A saved choice is only ever a hint: if it names a list this user is
-      // not on, the select returns nothing and we fall back to their own
-      // rather than erroring.
+      // not on, or one that has since been deleted, the select returns nothing
+      // and we fall back to the list they resolve to rather than erroring.
+      // Deleted needs saying: a list is archived rather than removed, and its
+      // members can still read the row — so without the filter, everyone else
+      // on a list its owner deleted would have kept opening it.
       let listId = resolved;
       if (activeListId) {
         const { data: chosen } = await supabase
-          .from('lists').select('id').eq('id', activeListId).maybeSingle();
+          .from('lists').select('id').eq('id', activeListId).is('archived_at', null).maybeSingle();
         if (chosen) listId = chosen.id;
       }
 

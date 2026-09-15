@@ -125,6 +125,10 @@ Re-run it after touching a policy. It wraps everything in a rollback.
   membership — your own list, made when you signed up — so you join somebody's
   list and land on your own empty one, and conclude the share did not work.
   This is exactly what happened.
+- **The saved choice of list is a hint, and never a deleted list.** Lists are
+  archived rather than removed, and their members can still read the row — so
+  the context query filters `archived_at` itself. Without that, everyone else
+  on a list its owner deleted would keep opening it.
 - **`join_code` is readable off `lists` only by members.** An outsider resolves
   a code through `lookup_list_by_code`, which returns a household's name and
   nothing else. Asserted in `supabase/tests/rls.sql`.

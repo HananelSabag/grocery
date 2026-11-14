@@ -27,3 +27,6 @@ npm-debug.log*
 
 # Logo working files. The ones the app ships live in public/.
 /*.png
+
+# Local-only: AI-agent notes, IDE settings and build outputs
+.claude/
